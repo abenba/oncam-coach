@@ -173,6 +173,12 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
       </div>
       <div class="live-tx hidden" id="live-tx"><div class="live-tx-label">📝 תמלול בזמן אמת</div><div class="live-tx-text" id="live-tx-text"></div></div>
       <div class="hidden" id="live-feedback" style="background:#fff7ed;border-right:4px solid #f59e0b;border-radius:10px;padding:10px;margin-top:10px;"><div id="live-feedback-text" style="font-size:13px;color:#92400e;font-weight:600;text-align:right;"></div></div>
+      <div id="debug-info" style="background:#1f2937;color:#10b981;border-radius:8px;padding:8px;margin-top:8px;font-family:monospace;font-size:11px;display:none;">
+        <div>Timer: <span id="debug-elapsed">0</span>s</div>
+        <div>Words: <span id="debug-words">0</span></div>
+        <div>WPM: <span id="debug-wpm">0</span></div>
+        <div>Feedback: <span id="debug-feedback">waiting...</span></div>
+      </div>
     </div>
     <!-- timer (during recording) -->
     <div class="card hidden" id="timer-card" style="text-align:center;padding:10px;">
@@ -407,12 +413,22 @@ function startRecording(){
     elapsed++;
     document.getElementById('timer-val').textContent=fmtTime(elapsed);
     
-    // Calculate REALISTIC metrics based on actual behavior
+    // Show debug info
+    var debugPanel=document.getElementById('debug-info');
+    if(debugPanel){
+      debugPanel.style.display='block';
+      document.getElementById('debug-elapsed').textContent=elapsed;
+      document.getElementById('debug-words').textContent=lastWordCount;
+    }
+    
+    // Calculate metrics
     var currentWords=lastWordCount;
-    var timeSinceStart=elapsed/60; // minutes
+    var timeSinceStart=elapsed/60;
     var currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
     
-    // Detect if actually speaking NOW (transcript growing)
+    if(debugPanel) document.getElementById('debug-wpm').textContent=currentWPM;
+    
+    // Detect silence
     var currentTranscriptLength=transcript.length;
     if(currentTranscriptLength===lastTranscriptLength){
       silenceStart++;
@@ -421,81 +437,64 @@ function startRecording(){
     }
     lastTranscriptLength=currentTranscriptLength;
     
-    // Track WPM trend
+    // Track WPM
     if(elapsed%3===0 && currentWPM>0){
       recentWPM.push(currentWPM);
       if(recentWPM.length>5) recentWPM.shift();
     }
     
-    // HONEST: We can only analyze speech, not video
-    // Scores are based ONLY on what we can measure: speech patterns
-    
+    // Score based on speech ONLY
     var isSpeaking=(silenceStart<3 && currentWords>5);
-    var hasContent=(currentWords>20); // at least 20 words spoken
+    var hasContent=(currentWords>20);
+    var hasGoodPace=(currentWPM>=100 && currentWPM<=180);
+    var hasFillers=(fillerDetected>0);
     
-    // Base score on ACTUAL speech data only
     var speechScore;
     if(!hasContent){
-      speechScore=30; // not enough speech
+      speechScore=30;
     }else if(!isSpeaking){
-      speechScore=45; // currently silent
+      speechScore=45;
     }else if(hasFillers){
-      speechScore=60; // speaking but with fillers
+      speechScore=60;
     }else if(hasGoodPace){
-      speechScore=85; // good pace, no fillers
+      speechScore=85;
     }else{
-      speechScore=70; // speaking, needs work
+      speechScore=70;
     }
     
-    // Add small random variation
     speechScore=speechScore+Math.floor(Math.random()*10)-5;
     
-    // Use speech score for all metrics since we can't see video
     faceData.eye.push(speechScore);
     faceData.posture.push(speechScore);
     faceData.expr.push(speechScore/100);
     
-    // CRITICAL: Live feedback MUST show!
-    // Simple rule: show feedback every 5 seconds after 20 seconds
-    if(elapsed>=20 && elapsed%5===0){
-      console.log('Feedback check at',elapsed,'seconds. Last feedback:',lastFeedbackTime);
+    // FEEDBACK - every 5 sec after 15 sec
+    if(elapsed>=15 && elapsed%5===0){
+      if(debugPanel) document.getElementById('debug-feedback').textContent='check @'+elapsed;
       
-      // Rate limit: min 4 seconds between feedbacks
       if(Date.now()-lastFeedbackTime<4000){
-        console.log('Too soon, skipping');
-        return;
+        if(debugPanel) document.getElementById('debug-feedback').textContent='rate limit';
+      }else{
+        lastFeedbackTime=Date.now();
+        var fb=document.getElementById('live-feedback');
+        var ft=document.getElementById('live-feedback-text');
+        
+        if(!fb||!ft){
+          if(debugPanel) document.getElementById('debug-feedback').textContent='NO ELEMENTS!';
+        }else{
+          var msgs=['💡 שמור קשר עין','💡 דבר בבהירות','✅ המשך כך','💡 זכור לנשום'];
+          var msg=msgs[Math.floor(elapsed/5)%4];
+          
+          fb.style.borderRightColor='#3b82f6';
+          ft.textContent=msg;
+          ft.style.color='#1e40af';
+          fb.classList.remove('hidden');
+          
+          if(debugPanel) document.getElementById('debug-feedback').textContent='SHOWING: '+msg;
+          
+          setTimeout(function(){fb.classList.add('hidden');},3000);
+        }
       }
-      
-      lastFeedbackTime=Date.now();
-      var feedbackBox=document.getElementById('live-feedback');
-      var feedbackText=document.getElementById('live-feedback-text');
-      
-      if(!feedbackBox||!feedbackText){
-        console.error('FEEDBACK ELEMENTS NOT FOUND!');
-        return;
-      }
-      
-      console.log('Showing feedback...');
-      
-      // Simple rotating messages
-      var messages=[
-        {text:'💡 שמור קשר עין למצלמה',color:'#3b82f6'},
-        {text:'💡 דבר בביטחון ובבהירות',color:'#3b82f6'},
-        {text:'✅ המשך כך!',color:'#16a34a'},
-        {text:'💡 זכור לנשום',color:'#f59e0b'}
-      ];
-      var feedback=messages[Math.floor(elapsed/5)%messages.length];
-      
-      feedbackBox.style.borderRightColor=feedback.color;
-      feedbackText.textContent=feedback.text;
-      feedbackText.style.color=feedback.color==='#16a34a'?'#065f46':'#92400e';
-      feedbackBox.classList.remove('hidden');
-      console.log('Feedback shown:',feedback.text);
-      
-      setTimeout(function(){
-        feedbackBox.classList.add('hidden');
-        console.log('Feedback hidden');
-      },3500);
     }
   },1000);
 }
