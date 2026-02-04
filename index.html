@@ -202,9 +202,10 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
             <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
           </div>
         </div>
-        <div id="speech-status-bar" style="background:rgba(239,68,68,0.2);border-radius:6px;padding:6px;text-align:center;">
+        <div id="speech-status-bar" style="background:rgba(239,68,68,0.2);border-radius:6px;padding:6px;text-align:center;cursor:pointer;" onclick="manualStartSpeech()">
           <span style="font-size:11px;color:#fbbf24;">🎤 </span>
           <span id="speech-status-text" style="font-size:11px;font-weight:600;color:#fbbf24;">מתחבר למיקרופון...</span>
+          <button id="speech-retry-btn" style="display:none;margin-right:8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;">הפעל מיקרופון</button>
         </div>
       </div>
       
@@ -276,6 +277,16 @@ var faceHistory={
     console.warn('[VIDEO] TensorFlow failed to load');
   };
   document.head.appendChild(tfScript);
+})();
+
+// Pre-check Speech Recognition availability
+(function(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){
+    console.log('[SPEECH] Speech Recognition is available');
+  }else{
+    console.error('[SPEECH] Speech Recognition NOT available!');
+  }
 })();
 
 async function initFaceDetection(){
@@ -404,6 +415,22 @@ function stopStream(){
   vid.srcObject=null;
 }
 
+// ─── manual speech recognition start ───
+function manualStartSpeech(){
+  if(!recognizer){
+    console.warn('[SPEECH] No recognizer available');
+    return;
+  }
+  console.log('[SPEECH] Manual start triggered by user');
+  try{
+    recognizer.start();
+    var btn=document.getElementById('speech-retry-btn');
+    if(btn) btn.style.display='none';
+  }catch(e){
+    console.error('[SPEECH] Manual start failed:',e);
+  }
+}
+
 // ─── recording ───
 function startRecording(){
   if(!stream) return;
@@ -459,9 +486,13 @@ function startRecording(){
     
     // Status indicators
     var speechStarted=false;
+    var retryAttempts=0;
+    var maxRetries=20; // Try for 40 seconds total
+    
     recognizer.onstart=function(){
       speechStarted=true;
-      console.log('[SPEECH] Started listening');
+      retryAttempts=0; // Stop retrying
+      console.log('[SPEECH] ✓ Started listening successfully!');
       var statusBar=document.getElementById('speech-status-bar');
       var statusText=document.getElementById('speech-status-text');
       if(statusBar) statusBar.style.background='rgba(16,185,129,0.2)';
@@ -555,36 +586,47 @@ function startRecording(){
       }
     };
     
-    // Try starting IMMEDIATELY (no delay)
-    try{
-      console.log('[SPEECH] Starting speech recognition immediately...');
-      recognizer.start();
-    }catch(e){
-      console.error('[SPEECH] Immediate start failed:',e);
-      // Retry after delay
-      setTimeout(function(){
-        try{
-          console.log('[SPEECH] Retrying after delay...');
-          recognizer.start();
-        }catch(e2){
-          console.error('[SPEECH] Retry failed:',e2);
-        }
-      },1000);
-    }
+    // Try starting with aggressive retry
+    var retryCount=0;
+    var maxRetries=30; // 30 seconds total
     
-    // Check if it actually started after 15 seconds
-    setTimeout(function(){
-      if(!speechStarted){
-        console.warn('[SPEECH] Speech recognition did not start after 15s');
+    function tryStart(){
+      if(speechStarted){
+        console.log('[SPEECH] ✓ Already started, stopping retries');
+        return;
+      }
+      
+      if(retryCount>=maxRetries){
+        console.error('[SPEECH] ❌ Failed after '+maxRetries+' attempts');
         var statusText=document.getElementById('speech-status-text');
         var statusBar=document.getElementById('speech-status-bar');
+        var retryBtn=document.getElementById('speech-retry-btn');
         if(statusText){
-          statusText.textContent='המיקרופון לא הגיב - בדוק הרשאות';
+          statusText.textContent='המיקרופון לא התחיל -';
           statusText.style.color='#ef4444';
         }
         if(statusBar) statusBar.style.background='rgba(239,68,68,0.2)';
+        if(retryBtn) retryBtn.style.display='inline-block';
+        return;
       }
-    },15000);
+      
+      retryCount++;
+      console.log('[SPEECH] Attempt #'+retryCount+'...');
+      
+      try{
+        recognizer.start();
+      }catch(e){
+        console.warn('[SPEECH] Attempt #'+retryCount+' failed:',e.message);
+      }
+      
+      // Keep trying every second
+      if(!speechStarted){
+        setTimeout(tryStart,1000);
+      }
+    }
+    
+    // Start first attempt immediately
+    tryStart();
   }else{
     console.warn('[SPEECH] Speech Recognition not supported');
   }
@@ -656,6 +698,11 @@ function startRecording(){
   // timer + intelligent live feedback
   timerInterval=setInterval(function(){
     elapsed++;
+    
+    // Debug every 5 seconds
+    if(elapsed%5===0){
+      console.log('[DEBUG] @'+elapsed+'s - Words:'+lastWordCount+' WPM:'+currentWPM+' Speech:'+(recognizer?'exists':'null'));
+    }
     
     // Calculate metrics FIRST (before using them!)
     var currentWords=lastWordCount;
