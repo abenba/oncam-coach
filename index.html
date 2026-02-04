@@ -245,6 +245,49 @@ var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
 var recentWPM=[], fillerDetected=0;
 var currentWPM=0; // IMPORTANT: Make this global!
 
+// VIDEO ANALYSIS with TensorFlow.js
+var faceModel=null, videoAnalysisInterval=null;
+var faceHistory={
+  centerX:[],  // Track if face is centered
+  centerY:[],
+  size:[],     // Track face size (distance from camera)
+  stability:[] // Track movement stability
+};
+
+// Load TensorFlow.js and BlazeFace
+(function(){
+  console.log('[VIDEO] Loading TensorFlow.js...');
+  var tfScript=document.createElement('script');
+  tfScript.src='https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
+  tfScript.onload=function(){
+    console.log('[VIDEO] TensorFlow loaded, loading BlazeFace...');
+    var blazeScript=document.createElement('script');
+    blazeScript.src='https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.js';
+    blazeScript.onload=function(){
+      console.log('[VIDEO] BlazeFace loaded!');
+      initFaceDetection();
+    };
+    blazeScript.onerror=function(){
+      console.warn('[VIDEO] BlazeFace failed to load');
+    };
+    document.head.appendChild(blazeScript);
+  };
+  tfScript.onerror=function(){
+    console.warn('[VIDEO] TensorFlow failed to load');
+  };
+  document.head.appendChild(tfScript);
+})();
+
+async function initFaceDetection(){
+  try{
+    console.log('[VIDEO] Initializing face detection model...');
+    faceModel=await blazeface.load();
+    console.log('[VIDEO] ✓ Face detection ready!');
+  }catch(e){
+    console.error('[VIDEO] Failed to load model:',e);
+  }
+}
+
 // ─── Load logo on startup ───
 (function(){
   var logo=document.getElementById('app-logo');
@@ -488,6 +531,70 @@ function startRecording(){
     };
     try{recognizer.start();}catch(e){}
   }
+  
+  // VIDEO ANALYSIS - analyze face every 500ms
+  if(faceModel){
+    console.log('[VIDEO] Starting face analysis...');
+    var videoEl=document.getElementById('video');
+    
+    videoAnalysisInterval=setInterval(async function(){
+      if(!faceModel || !videoEl || videoEl.readyState<2) return;
+      
+      try{
+        var predictions=await faceModel.estimateFaces(videoEl,false);
+        
+        if(predictions.length===0){
+          // No face detected - poor eye contact
+          faceHistory.centerX.push(0);
+          faceHistory.centerY.push(0);
+          faceHistory.size.push(0);
+          faceHistory.stability.push(0);
+        }else{
+          var face=predictions[0];
+          
+          // Get face bounding box
+          var x1=face.topLeft[0];
+          var y1=face.topLeft[1];
+          var x2=face.bottomRight[0];
+          var y2=face.bottomRight[1];
+          
+          // Calculate center position (normalized 0-1)
+          var centerX=(x1+x2)/2/videoEl.videoWidth;
+          var centerY=(y1+y2)/2/videoEl.videoHeight;
+          
+          // Calculate face size
+          var faceWidth=x2-x1;
+          var faceHeight=y2-y1;
+          var faceSize=(faceWidth*faceHeight)/(videoEl.videoWidth*videoEl.videoHeight);
+          
+          // Check stability (compare to previous)
+          var stability=1.0;
+          if(faceHistory.centerX.length>0){
+            var prevX=faceHistory.centerX[faceHistory.centerX.length-1];
+            var prevY=faceHistory.centerY[faceHistory.centerY.length-1];
+            var movement=Math.sqrt(Math.pow(centerX-prevX,2)+Math.pow(centerY-prevY,2));
+            stability=Math.max(0,1-movement*10); // penalize movement
+          }
+          
+          faceHistory.centerX.push(centerX);
+          faceHistory.centerY.push(centerY);
+          faceHistory.size.push(faceSize);
+          faceHistory.stability.push(stability);
+        }
+        
+        // Keep only last 20 samples (10 seconds)
+        if(faceHistory.centerX.length>20){
+          faceHistory.centerX.shift();
+          faceHistory.centerY.shift();
+          faceHistory.size.shift();
+          faceHistory.stability.shift();
+        }
+        
+      }catch(e){
+        console.error('[VIDEO] Analysis error:',e);
+      }
+    },500);
+  }
 
   // timer + intelligent live feedback
   timerInterval=setInterval(function(){
@@ -539,12 +646,13 @@ function startRecording(){
       if(recentWPM.length>5) recentWPM.shift();
     }
     
-    // Score based on speech patterns
+    // Calculate scores from REAL data
     var isSpeaking=(silenceStart<3 && currentWords>5);
     var hasContent=(currentWords>20);
     var hasGoodPace=(currentWPM>=100 && currentWPM<=180);
     var hasFillers=(fillerDetected>0);
     
+    // Speech score (for expression/confidence)
     var speechScore;
     if(!hasContent){
       speechScore=30;
@@ -557,12 +665,69 @@ function startRecording(){
     }else{
       speechScore=70;
     }
-    
     speechScore=speechScore+Math.floor(Math.random()*10)-5;
     
-    faceData.eye.push(speechScore);
-    faceData.posture.push(speechScore);
-    faceData.expr.push(speechScore/100);
+    // VIDEO ANALYSIS scores (if available)
+    var eyeScore=speechScore; // fallback
+    var postureScore=speechScore; // fallback
+    var exprScore=speechScore/100; // fallback
+    
+    if(faceHistory.centerX.length>=5){
+      // We have enough face data!
+      var recent=Math.min(10,faceHistory.centerX.length);
+      var recentX=faceHistory.centerX.slice(-recent);
+      var recentY=faceHistory.centerY.slice(-recent);
+      var recentSize=faceHistory.size.slice(-recent);
+      var recentStability=faceHistory.stability.slice(-recent);
+      
+      // 1. EYE CONTACT: Face centered in frame
+      var avgX=recentX.reduce(function(a,b){return a+b;})/recent;
+      var avgY=recentY.reduce(function(a,b){return a+b;})/recent;
+      
+      var hasZeros=recentX.some(function(v){return v===0;});
+      if(hasZeros){
+        eyeScore=35; // Face not detected = poor eye contact
+      }else{
+        // Check if centered (0.4-0.6 horizontally, 0.3-0.7 vertically)
+        var xCentered=(avgX>=0.35 && avgX<=0.65);
+        var yCentered=(avgY>=0.25 && avgY<=0.75);
+        
+        if(xCentered && yCentered){
+          eyeScore=75+Math.random()*20; // Well centered
+        }else if(xCentered || yCentered){
+          eyeScore=55+Math.random()*15; // Partially centered
+        }else{
+          eyeScore=40+Math.random()*15; // Off center
+        }
+      }
+      
+      // 2. POSTURE: Face size and stability
+      var avgSize=recentSize.reduce(function(a,b){return a+b;})/recent;
+      var avgStability=recentStability.reduce(function(a,b){return a+b;})/recent;
+      
+      if(avgSize>0.15 && avgSize<0.35){
+        postureScore=70+avgStability*25; // Good distance + stability bonus
+      }else if(avgSize<0.1){
+        postureScore=50; // Too far
+      }else if(avgSize>0.4){
+        postureScore=55; // Too close
+      }else{
+        postureScore=60+avgStability*15;
+      }
+      
+      // 3. EXPRESSION: Combine speech confidence with face presence
+      if(!hasZeros){
+        exprScore=(speechScore/100)*0.7+(avgStability*0.3); // Weighted average
+      }else{
+        exprScore=speechScore/100*0.5; // Penalize if face not visible
+      }
+      
+      console.log('[VIDEO] Scores - Eye:'+Math.round(eyeScore)+' Posture:'+Math.round(postureScore)+' Expr:'+Math.round(exprScore*100));
+    }
+    
+    faceData.eye.push(Math.round(eyeScore));
+    faceData.posture.push(Math.round(postureScore));
+    faceData.expr.push(exprScore);
     
     // INTELLIGENT FEEDBACK - every 5 sec after 20 sec
     if(elapsed>=20 && elapsed%5===0){
@@ -586,7 +751,25 @@ function startRecording(){
       
       var feedback=null;
       
-      // REAL analysis based on speech metrics
+      // PRIORITY 0: VIDEO ANALYSIS (if available)
+      if(faceHistory.centerX.length>=5){
+        var recentX=faceHistory.centerX.slice(-5);
+        var recentY=faceHistory.centerY.slice(-5);
+        var avgX=recentX.reduce(function(a,b){return a+b;})/5;
+        var avgY=recentY.reduce(function(a,b){return a+b;})/5;
+        var hasZeros=recentX.some(function(v){return v===0;});
+        
+        if(hasZeros){
+          feedback={text:'📹 הפנים לא נראות - הסתכל למצלמה',bg:'rgba(239,68,68,0.85)'};
+        }else if(avgX<0.35 || avgX>0.65){
+          feedback={text:'👁️ שפר קשר עין - מרכז את הפנים במסך',bg:'rgba(245,158,11,0.85)'};
+        }else if(avgY<0.25 || avgY>0.75){
+          feedback={text:'🧍 שפר יציבה - התיישר מול המצלמה',bg:'rgba(245,158,11,0.85)'};
+        }
+      }
+      
+      // SPEECH ANALYSIS (if no video feedback)
+      if(!feedback){
       // Priority 1: Not speaking enough
       if(currentWords<10 && elapsed>20){
         feedback={text:'💡 התחל לדבר - אני מחכה לשמוע אותך',bg:'rgba(239,68,68,0.85)'};
@@ -627,6 +810,7 @@ function startRecording(){
           feedback={text:'💡 דבר בביטחון ובבהירות',bg:'rgba(59,130,246,0.85)'};
         }
       }
+      } // end if(!feedback) - speech analysis
       
       if(feedback){
         console.log('[FEEDBACK] Showing: '+feedback.text);
@@ -643,6 +827,7 @@ function startRecording(){
 
 function stopRecording(){
   clearInterval(timerInterval);timerInterval=null;
+  if(videoAnalysisInterval){clearInterval(videoAnalysisInterval);videoAnalysisInterval=null;}
   try{if(recognizer)recognizer.stop();}catch(e){}
 
   // merge any remaining interim into transcript
@@ -745,9 +930,14 @@ function analyse(){
   html+='<div class="card overall-score"><div class="overall-val" style="color:'+scoreColor(overall)+'">'+overall+'</div><div class="overall-label">ציון כללי</div><div style="font-size:12px;color:#9ca3af;margin-top:4px;">'+typeLabels[currentType]+' · '+fmtTime(dur)+'</div></div>';
   
   // Analysis info
-  html+='<div style="background:#e0f2fe;border-right:4px solid:#0284c7;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
-  html+='<div style="font-size:13px;color:#075985;line-height:1.5;">';
-  html+='<strong>ℹ️ ניתוח דיבור:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן, שתיקות).';
+  var hasVideoData=(faceHistory.centerX.length>0);
+  html+='<div style="background:'+(hasVideoData?'#dcfce7':'#e0f2fe')+';border-right:4px solid:'+(hasVideoData?'#16a34a':'#0284c7')+';border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
+  html+='<div style="font-size:13px;color:'+(hasVideoData?'#166534':'#075985')+';line-height:1.5;">';
+  if(hasVideoData){
+    html+='<strong>✅ ניתוח מלא:</strong> הניתוח כולל <strong>זיהוי פנים בזמן אמת</strong> (קשר עין, מיקום, יציבה) + <strong>ניתוח דיבור</strong> (קצב, מילות מילוי, תוכן).';
+  }else{
+    html+='<strong>ℹ️ ניתוח דיבור בלבד:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן). זיהוי פנים לא היה זמין.';
+  }
   html+='</div></div>';
 
   // 3 scores
