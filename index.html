@@ -171,20 +171,30 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         <video id="video" playsinline style="width:100%;border-radius:12px;background:#111827;max-height:45vh;object-fit:cover;display:block;"></video>
         <div class="rec-badge hidden" id="rec-badge"><div class="rec-dot"></div>מקליט</div>
         
-        <!-- DEBUG OVERLAY - visible on top of video -->
-        <div id="debug-overlay" style="position:absolute;top:10px;left:10px;right:10px;background:rgba(0,0,0,0.8);color:#10b981;padding:10px;border-radius:8px;font-family:monospace;font-size:12px;display:none;z-index:100;">
-          <div style="color:#fff;font-weight:bold;margin-bottom:5px;">🔍 DEBUG</div>
-          <div>⏱️ Timer: <span id="debug-elapsed">0</span>s</div>
-          <div>💬 Words: <span id="debug-words">0</span></div>
-          <div>📊 WPM: <span id="debug-wpm">0</span></div>
-          <div style="margin-top:5px;color:#fbbf24;">📢 <span id="debug-feedback">waiting...</span></div>
-        </div>
-        
-        <!-- FEEDBACK OVERLAY - visible on top of video -->
-        <div class="hidden" id="live-feedback" style="position:absolute;bottom:10px;left:10px;right:10px;background:rgba(255,247,237,0.95);border-right:4px solid #f59e0b;border-radius:10px;padding:12px;z-index:99;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-          <div id="live-feedback-text" style="font-size:14px;color:#92400e;font-weight:700;text-align:right;"></div>
+        <!-- FEEDBACK OVERLAY - translucent, centered on video -->
+        <div class="hidden" id="live-feedback" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(59,130,246,0.92);border-radius:16px;padding:16px 24px;z-index:99;box-shadow:0 8px 32px rgba(0,0,0,0.4);backdrop-filter:blur(8px);max-width:80%;">
+          <div id="live-feedback-text" style="font-size:16px;color:#fff;font-weight:700;text-align:center;line-height:1.4;"></div>
         </div>
       </div>
+      
+      <!-- STATS BOX - below video, compact and aesthetic -->
+      <div class="hidden" id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">⏱️ זמן</div>
+          <div id="stats-time" style="font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;">00:00</div>
+        </div>
+        <div style="width:1px;height:30px;background:#334155;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">💬 מילים</div>
+          <div id="stats-words" style="font-size:20px;font-weight:700;color:#10b981;">0</div>
+        </div>
+        <div style="width:1px;height:30px;background:#334155;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">🎯 קצב</div>
+          <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
+        </div>
+      </div>
+      
       <div class="live-tx hidden" id="live-tx"><div class="live-tx-label">📝 תמלול בזמן אמת</div><div class="live-tx-text" id="live-tx-text"></div></div>
     </div>
     <!-- timer (during recording) -->
@@ -356,6 +366,14 @@ function startRecording(){
   document.getElementById('timer-card').classList.remove('hidden');
   document.getElementById('live-tx').classList.add('hidden');
   document.getElementById('live-tx-text').textContent='';
+  // Hide stats box initially, will show when timer starts
+  var statsBox=document.getElementById('stats-box');
+  if(statsBox){
+    statsBox.classList.add('hidden');
+    document.getElementById('stats-time').textContent='00:00';
+    document.getElementById('stats-words').textContent='0';
+    document.getElementById('stats-wpm').textContent='0';
+  }
 
   // MediaRecorder
   var mimeType='';
@@ -418,14 +436,17 @@ function startRecording(){
   // timer + intelligent live feedback
   timerInterval=setInterval(function(){
     elapsed++;
-    document.getElementById('timer-val').textContent=fmtTime(elapsed);
     
-    // Show debug overlay ON TOP OF VIDEO
-    var debugPanel=document.getElementById('debug-overlay');
-    if(debugPanel){
-      debugPanel.style.display='block';
-      document.getElementById('debug-elapsed').textContent=elapsed;
-      document.getElementById('debug-words').textContent=lastWordCount;
+    // Update old timer (for compatibility)
+    var oldTimer=document.getElementById('timer-val');
+    if(oldTimer) oldTimer.textContent=fmtTime(elapsed);
+    
+    // Update NEW stats box
+    var statsBox=document.getElementById('stats-box');
+    if(statsBox){
+      statsBox.classList.remove('hidden');
+      document.getElementById('stats-time').textContent=fmtTime(elapsed);
+      document.getElementById('stats-words').textContent=lastWordCount;
     }
     
     // Calculate metrics
@@ -433,7 +454,19 @@ function startRecording(){
     var timeSinceStart=elapsed/60;
     var currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
     
-    if(debugPanel) document.getElementById('debug-wpm').textContent=currentWPM;
+    // Update WPM in stats
+    if(statsBox){
+      var wpmEl=document.getElementById('stats-wpm');
+      wpmEl.textContent=currentWPM;
+      // Color code: green=good, yellow=ok, red=bad
+      if(currentWPM>=120 && currentWPM<=180){
+        wpmEl.style.color='#10b981';
+      }else if(currentWPM>0){
+        wpmEl.style.color='#f59e0b';
+      }else{
+        wpmEl.style.color='#94a3b8';
+      }
+    }
     
     // Detect silence
     var currentTranscriptLength=transcript.length;
@@ -475,32 +508,68 @@ function startRecording(){
     faceData.posture.push(speechScore);
     faceData.expr.push(speechScore/100);
     
-    // FEEDBACK - every 5 sec after 15 sec
-    if(elapsed>=15 && elapsed%5===0){
-      if(debugPanel) document.getElementById('debug-feedback').textContent='check @'+elapsed;
+    // INTELLIGENT FEEDBACK based on REAL data
+    if(elapsed>=20 && elapsed%5===0){
+      if(Date.now()-lastFeedbackTime<4000) return;
       
-      if(Date.now()-lastFeedbackTime<4000){
-        if(debugPanel) document.getElementById('debug-feedback').textContent='rate limit';
-      }else{
-        lastFeedbackTime=Date.now();
-        var fb=document.getElementById('live-feedback');
-        var ft=document.getElementById('live-feedback-text');
-        
-        if(!fb||!ft){
-          if(debugPanel) document.getElementById('debug-feedback').textContent='NO ELEMENTS!';
+      lastFeedbackTime=Date.now();
+      var fb=document.getElementById('live-feedback');
+      var ft=document.getElementById('live-feedback-text');
+      
+      if(!fb||!ft) return;
+      
+      var feedback=null;
+      
+      // REAL analysis based on actual metrics
+      
+      // Priority 1: Not speaking enough
+      if(currentWords<10 && elapsed>20){
+        feedback={text:'💡 התחל לדבר - אני מחכה לשמוע אותך',color:'#ef4444',bg:'rgba(239,68,68,0.92)'};
+      }
+      // Priority 2: Filler words detected
+      else if(fillerDetected>=2){
+        feedback={text:'⚠️ זיהיתי מילות מילוי - נסה להפסיק במקום "אממ"',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+        fillerDetected=0;
+      }
+      // Priority 3: Speaking too fast
+      else if(currentWPM>200){
+        feedback={text:'🐇 קצב מהיר מדי ('+currentWPM+' מילים/דקה) - האט ונשום',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+      }
+      else if(currentWPM>180 && currentType==='pitch'){
+        feedback={text:'⚡ בפיץ\' האט קצת - תן למשקיעים לעכל',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
+      }
+      // Priority 4: Speaking too slow
+      else if(currentWPM>0 && currentWPM<90 && currentWords>20){
+        feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+      }
+      // Priority 5: Long silence
+      else if(silenceStart>8 && currentWords>20){
+        feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',color:'#ef4444',bg:'rgba(239,68,68,0.92)'};
+      }
+      // Priority 6: Good performance!
+      else if(currentWPM>=120 && currentWPM<=180 && currentWords>30){
+        feedback={text:'✅ מצוין! קצב טוב ('+currentWPM+' מילים/דקה)',color:'#10b981',bg:'rgba(16,185,129,0.92)'};
+      }
+      // Fallback: type-specific tip
+      else if(currentWords>5){
+        if(currentType==='pitch'){
+          feedback={text:'💡 זכור: הצג התלהבות ואמון ברעיון',color:'#8b5cf6',bg:'rgba(139,92,246,0.92)'};
+        }else if(currentType==='interview'){
+          feedback={text:'💡 תשובות תמציתיות - איכות על כמות',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
+        }else if(currentType==='speech'){
+          feedback={text:'💡 שמור על קשר עין עם הקהל',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
         }else{
-          var msgs=['💡 שמור קשר עין','💡 דבר בבהירות','✅ המשך כך','💡 זכור לנשום'];
-          var msg=msgs[Math.floor(elapsed/5)%4];
-          
-          fb.style.borderRightColor='#3b82f6';
-          ft.textContent=msg;
-          ft.style.color='#1e40af';
-          fb.classList.remove('hidden');
-          
-          if(debugPanel) document.getElementById('debug-feedback').textContent='SHOWING: '+msg;
-          
-          setTimeout(function(){fb.classList.add('hidden');},3000);
+          feedback={text:'💡 דבר בביטחון ובבהירות',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
         }
+      }
+      
+      if(feedback){
+        fb.style.background=feedback.bg;
+        ft.textContent=feedback.text;
+        ft.style.color='#fff';
+        fb.classList.remove('hidden');
+        
+        setTimeout(function(){fb.classList.add('hidden');},4000);
       }
     }
   },1000);
@@ -516,6 +585,10 @@ function stopRecording(){
 
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('analyzing-wrap').classList.remove('hidden');
+  
+  // Hide stats box
+  var statsBox=document.getElementById('stats-box');
+  if(statsBox) statsBox.classList.add('hidden');
   
   // Wait for MediaRecorder to finish
   if(mediaRec && mediaRec.state!=='inactive'){
