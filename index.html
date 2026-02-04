@@ -431,6 +431,15 @@ function startRecording(){
     document.getElementById('stats-words').textContent='0';
     document.getElementById('stats-wpm').textContent='0';
   }
+  
+  // Set initial speech status
+  var statusText=document.getElementById('speech-status-text');
+  var statusBar=document.getElementById('speech-status-bar');
+  if(statusText){
+    statusText.textContent='מתחיל מיקרופון...';
+    statusText.style.color='#f59e0b';
+  }
+  if(statusBar) statusBar.style.background='rgba(245,158,11,0.2)';
 
   // MediaRecorder
   var mimeType='';
@@ -449,7 +458,9 @@ function startRecording(){
     var lastFinalIndex=0;
     
     // Status indicators
+    var speechStarted=false;
     recognizer.onstart=function(){
+      speechStarted=true;
       console.log('[SPEECH] Started listening');
       var statusBar=document.getElementById('speech-status-bar');
       var statusText=document.getElementById('speech-status-text');
@@ -530,10 +541,52 @@ function startRecording(){
       if(mediaRec&&mediaRec.state==='recording'){try{recognizer.start();}catch(e){}}
     };
     recognizer.onerror=function(e){
+      console.log('[SPEECH] Error: '+e.error+', will retry...');
       lastFinalIndex=0;
-      if(mediaRec&&mediaRec.state==='recording'){setTimeout(function(){try{recognizer.start();}catch(ex){}},500);}
+      if(mediaRec&&mediaRec.state==='recording'){
+        setTimeout(function(){
+          try{
+            console.log('[SPEECH] Retrying...');
+            recognizer.start();
+          }catch(ex){
+            console.error('[SPEECH] Retry failed:',ex);
+          }
+        },500);
+      }
     };
-    try{recognizer.start();}catch(e){}
+    
+    // Try starting IMMEDIATELY (no delay)
+    try{
+      console.log('[SPEECH] Starting speech recognition immediately...');
+      recognizer.start();
+    }catch(e){
+      console.error('[SPEECH] Immediate start failed:',e);
+      // Retry after delay
+      setTimeout(function(){
+        try{
+          console.log('[SPEECH] Retrying after delay...');
+          recognizer.start();
+        }catch(e2){
+          console.error('[SPEECH] Retry failed:',e2);
+        }
+      },1000);
+    }
+    
+    // Check if it actually started after 15 seconds
+    setTimeout(function(){
+      if(!speechStarted){
+        console.warn('[SPEECH] Speech recognition did not start after 15s');
+        var statusText=document.getElementById('speech-status-text');
+        var statusBar=document.getElementById('speech-status-bar');
+        if(statusText){
+          statusText.textContent='המיקרופון לא הגיב - בדוק הרשאות';
+          statusText.style.color='#ef4444';
+        }
+        if(statusBar) statusBar.style.background='rgba(239,68,68,0.2)';
+      }
+    },15000);
+  }else{
+    console.warn('[SPEECH] Speech Recognition not supported');
   }
   
   // VIDEO ANALYSIS - analyze face every 500ms
