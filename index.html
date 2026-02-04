@@ -185,20 +185,26 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
       </div>
       
       <!-- STATS BOX - below video, compact and aesthetic -->
-      <div class="hidden" id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <div style="text-align:center;">
-          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">⏱️ זמן</div>
-          <div id="stats-time" style="font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;">00:00</div>
+      <div class="hidden" id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display:flex;justify-content:space-around;align-items:center;margin-bottom:8px;">
+          <div style="text-align:center;">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">⏱️ זמן</div>
+            <div id="stats-time" style="font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;">00:00</div>
+          </div>
+          <div style="width:1px;height:30px;background:#334155;"></div>
+          <div style="text-align:center;">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">💬 מילים</div>
+            <div id="stats-words" style="font-size:20px;font-weight:700;color:#10b981;">0</div>
+          </div>
+          <div style="width:1px;height:30px;background:#334155;"></div>
+          <div style="text-align:center;">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">🎯 קצב</div>
+            <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
+          </div>
         </div>
-        <div style="width:1px;height:30px;background:#334155;"></div>
-        <div style="text-align:center;">
-          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">💬 מילים</div>
-          <div id="stats-words" style="font-size:20px;font-weight:700;color:#10b981;">0</div>
-        </div>
-        <div style="width:1px;height:30px;background:#334155;"></div>
-        <div style="text-align:center;">
-          <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">🎯 קצב</div>
-          <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
+        <div id="speech-status-bar" style="background:rgba(239,68,68,0.2);border-radius:6px;padding:6px;text-align:center;">
+          <span style="font-size:11px;color:#fbbf24;">🎤 </span>
+          <span id="speech-status-text" style="font-size:11px;font-weight:600;color:#fbbf24;">ממתין למיקרופון...</span>
         </div>
       </div>
       
@@ -382,9 +388,6 @@ function startRecording(){
     document.getElementById('stats-words').textContent='0';
     document.getElementById('stats-wpm').textContent='0';
   }
-  // Show debug status
-  var debugStatus=document.getElementById('debug-status');
-  if(debugStatus) debugStatus.style.display='block';
 
   // MediaRecorder
   var mimeType='';
@@ -404,26 +407,44 @@ function startRecording(){
     
     // Status indicators
     recognizer.onstart=function(){
-      var speechStatus=document.getElementById('debug-speech-status');
-      if(speechStatus) speechStatus.textContent='Listening...';
-      if(speechStatus) speechStatus.style.color='#10b981';
+      console.log('[SPEECH] Started listening');
+      var statusBar=document.getElementById('speech-status-bar');
+      var statusText=document.getElementById('speech-status-text');
+      if(statusBar) statusBar.style.background='rgba(16,185,129,0.2)';
+      if(statusText){
+        statusText.textContent='מקשיב...';
+        statusText.style.color='#10b981';
+      }
     };
     recognizer.onerror=function(e){
-      var speechStatus=document.getElementById('debug-speech-status');
-      if(speechStatus) speechStatus.textContent='Error: '+e.error;
-      if(speechStatus) speechStatus.style.color='#ef4444';
+      console.log('[SPEECH] Error: '+e.error);
+      var statusBar=document.getElementById('speech-status-bar');
+      var statusText=document.getElementById('speech-status-text');
+      if(statusBar) statusBar.style.background='rgba(239,68,68,0.3)';
+      if(statusText){
+        statusText.textContent='שגיאה: '+e.error+' - בדוק הרשאות';
+        statusText.style.color='#ef4444';
+      }
     };
     recognizer.onend=function(){
-      var speechStatus=document.getElementById('debug-speech-status');
-      if(speechStatus) speechStatus.textContent='Stopped';
-      if(speechStatus) speechStatus.style.color='#f59e0b';
+      console.log('[SPEECH] Stopped');
+      var statusBar=document.getElementById('speech-status-bar');
+      var statusText=document.getElementById('speech-status-text');
+      if(statusBar) statusBar.style.background='rgba(245,158,11,0.2)';
+      if(statusText){
+        statusText.textContent='הופסק';
+        statusText.style.color='#f59e0b';
+      }
     };
     
     recognizer.onresult=function(ev){
-      var speechStatus=document.getElementById('debug-speech-status');
-      if(speechStatus){
-        speechStatus.textContent='Hearing you!';
-        speechStatus.style.color='#10b981';
+      console.log('[SPEECH] Hearing...');
+      var statusBar=document.getElementById('speech-status-bar');
+      var statusText=document.getElementById('speech-status-text');
+      if(statusBar) statusBar.style.background='rgba(16,185,129,0.3)';
+      if(statusText){
+        statusText.textContent='שומע אותך! ✓';
+        statusText.style.color='#10b981';
       }
       
       var newText='';
@@ -476,10 +497,6 @@ function startRecording(){
     var currentWords=lastWordCount;
     var timeSinceStart=elapsed/60;
     currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0; // Update global
-    
-    // NOW update UI with calculated values
-    var debugStatus=document.getElementById('debug-feedback-status');
-    if(debugStatus) debugStatus.textContent='💬 '+elapsed+'s | Words:'+lastWordCount+' | WPM:'+currentWPM;
     
     // Update old timer (for compatibility)
     var oldTimer=document.getElementById('timer-val');
@@ -549,11 +566,10 @@ function startRecording(){
     
     // INTELLIGENT FEEDBACK - every 5 sec after 20 sec
     if(elapsed>=20 && elapsed%5===0){
-      var debugStatus=document.getElementById('debug-feedback-status');
-      if(debugStatus) debugStatus.textContent='🔍 Checking @'+elapsed+'s...';
+      console.log('[FEEDBACK] Check @'+elapsed+'s | WPM:'+currentWPM+' | Words:'+currentWords);
       
       if(Date.now()-lastFeedbackTime<4000){
-        if(debugStatus) debugStatus.textContent='⏸️ Rate limited';
+        console.log('[FEEDBACK] Rate limited');
         return;
       }
       
@@ -562,11 +578,11 @@ function startRecording(){
       var ft=document.getElementById('live-feedback-text');
       
       if(!fb||!ft){
-        if(debugStatus) debugStatus.textContent='❌ Elements not found!';
+        console.log('[FEEDBACK] ERROR: Elements not found!');
         return;
       }
       
-      if(debugStatus) debugStatus.textContent='✅ Elements OK, checking...';
+      console.log('[FEEDBACK] Generating...');
       
       var feedback=null;
       
@@ -613,13 +629,13 @@ function startRecording(){
       }
       
       if(feedback){
+        console.log('[FEEDBACK] Showing: '+feedback.text);
         fb.style.background=feedback.bg;
         ft.textContent=feedback.text;
         fb.classList.remove('hidden');
-        if(debugStatus) debugStatus.textContent='💬 SHOWN: '+feedback.text.substring(0,20);
         setTimeout(function(){fb.classList.add('hidden');},4000);
       }else{
-        if(debugStatus) debugStatus.textContent='❌ No feedback generated!';
+        console.log('[FEEDBACK] No feedback generated');
       }
     }
   },1000);
@@ -636,11 +652,9 @@ function stopRecording(){
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('analyzing-wrap').classList.remove('hidden');
   
-  // Hide stats box and debug
+  // Hide stats box
   var statsBox=document.getElementById('stats-box');
   if(statsBox) statsBox.classList.add('hidden');
-  var debugStatus=document.getElementById('debug-status');
-  if(debugStatus) debugStatus.style.display='none';
   
   // Wait for MediaRecorder to finish
   if(mediaRec && mediaRec.state!=='inactive'){
@@ -801,8 +815,6 @@ function analyse(){
 
 function reRecord(){
   // Hide old results elements
-  var debugStatus=document.getElementById('debug-status');
-  if(debugStatus) debugStatus.style.display='none';
   var statsBox=document.getElementById('stats-box');
   if(statsBox) statsBox.classList.add('hidden');
   
