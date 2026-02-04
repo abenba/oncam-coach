@@ -177,8 +177,9 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         </div>
         
         <!-- DEBUG STATUS - shows what's working -->
-        <div id="debug-status" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:10px;z-index:100;">
-          <div id="debug-mediapipe">📹 Video: Loading...</div>
+        <div id="debug-status" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;border-radius:8px;font-size:11px;z-index:100;display:none;">
+          <div id="debug-mediapipe" style="margin-bottom:4px;">📹 Video: OK</div>
+          <div id="debug-speech" style="margin-bottom:4px;color:#fbbf24;">🎤 Speech: <span id="debug-speech-status">Waiting...</span></div>
           <div id="debug-feedback-status">💬 Feedback: waiting...</div>
         </div>
       </div>
@@ -400,7 +401,31 @@ function startRecording(){
     recognizer.interimResults=true;
     recognizer.lang=currentLang;
     var lastFinalIndex=0;
+    
+    // Status indicators
+    recognizer.onstart=function(){
+      var speechStatus=document.getElementById('debug-speech-status');
+      if(speechStatus) speechStatus.textContent='Listening...';
+      if(speechStatus) speechStatus.style.color='#10b981';
+    };
+    recognizer.onerror=function(e){
+      var speechStatus=document.getElementById('debug-speech-status');
+      if(speechStatus) speechStatus.textContent='Error: '+e.error;
+      if(speechStatus) speechStatus.style.color='#ef4444';
+    };
+    recognizer.onend=function(){
+      var speechStatus=document.getElementById('debug-speech-status');
+      if(speechStatus) speechStatus.textContent='Stopped';
+      if(speechStatus) speechStatus.style.color='#f59e0b';
+    };
+    
     recognizer.onresult=function(ev){
+      var speechStatus=document.getElementById('debug-speech-status');
+      if(speechStatus){
+        speechStatus.textContent='Hearing you!';
+        speechStatus.style.color='#10b981';
+      }
+      
       var newText='';
       // collect any NEW finals since lastFinalIndex
       for(var i=lastFinalIndex;i<ev.results.length;i++){
@@ -798,23 +823,78 @@ function saveRecording(id){
 // ─── view saved session ───
 function viewSession(id){
   var entry=sessions.find(function(e){return e.id==id;});
-  if(!entry) return;
+  if(!entry){
+    alert('אימון לא נמצא');
+    return;
+  }
   
-  // Populate faceData from saved entry
-  faceData={
-    eye:Array(entry.duration).fill(entry.eye),
-    posture:Array(entry.duration).fill(entry.posture),
-    expr:Array(entry.duration).fill(entry.expr/100)
-  };
+  // Reconstruct faceData arrays (simulate samples every second)
+  faceData={eye:[],posture:[],expr:[]};
+  for(var i=0;i<entry.duration;i++){
+    faceData.eye.push(entry.eye);
+    faceData.posture.push(entry.posture);
+    faceData.expr.push(entry.expr/100);
+  }
   
-  // Populate other data
+  // Set global variables for analyse()
   transcript=entry.transcript||'';
   elapsed=entry.duration;
   currentType=entry.type;
   recordedBlob=null; // Can't restore blob from localStorage
   
-  // Show results
-  analyse();
+  // Navigate to results page and show analysis
+  showPage('page-results');
+  
+  // Build results manually since we have the data
+  var eye=entry.eye;
+  var posture=entry.posture;
+  var expr=entry.expr;
+  var overall=Math.round((eye+posture+expr)/3);
+  var wpm=entry.wpm||0;
+  var words=entry.words||0;
+  var fillerCount=entry.fillerCount||0;
+  var dur=entry.duration;
+  
+  var typeLabels={pitch:"פיץ'",speech:"נאום",interview:"ראיון",audition:"אודישן"};
+  var html='';
+  
+  // overall
+  html+='<div class="card overall-score"><div class="overall-val" style="color:'+scoreColor(overall)+'">'+overall+'</div><div class="overall-label">ציון כללי</div><div style="font-size:12px;color:#9ca3af;margin-top:4px;">'+typeLabels[currentType]+' · '+fmtTime(dur)+'</div></div>';
+  
+  // Analysis info
+  html+='<div style="background:#e0f2fe;border-right:4px solid:#0284c7;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
+  html+='<div style="font-size:13px;color:#075985;line-height:1.5;">';
+  html+='<strong>ℹ️ ניתוח דיבור:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן, שתיקות).';
+  html+='</div></div>';
+  
+  // 3 scores
+  html+='<div class="card-sm" style="display:flex;gap:8px;margin-bottom:8px;">';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">👁️</div><div class="stat-val">'+eye+'</div><div class="stat-label">קשר עין</div></div>';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">🧍</div><div class="stat-val">'+posture+'</div><div class="stat-label">יציבה</div></div>';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">😊</div><div class="stat-val">'+expr+'</div><div class="stat-label">הבעות</div></div>';
+  html+='</div>';
+  
+  // speech stats
+  html+='<div class="card-sm" style="display:flex;gap:8px;margin-bottom:8px;">';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">⏱️</div><div class="stat-val">'+wpm+'</div><div class="stat-label">מילים לדקה</div></div>';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">💬</div><div class="stat-val">'+words+'</div><div class="stat-label">סה"כ מילים</div></div>';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">⚠️</div><div class="stat-val">'+fillerCount+'</div><div class="stat-label">מילות מילוי</div></div>';
+  html+='</div>';
+  
+  // transcript
+  if(transcript.trim()){html+='<div class="card-sm"><div class="section-label-sm">📝 תמלול</div><div style="background:#f3f4f6;border-radius:10px;padding:10px;text-align:right;max-height:120px;overflow-y:auto;"><p style="font-size:14px;color:#374151;line-height:1.5;margin:0;">'+escHtml(transcript)+'</p></div></div>';}
+  
+  // tips
+  var tips=getTips(eye,posture,expr,wpm,fillerCount,currentType);
+  if(tips.length>0){html+='<div class="card-sm"><div class="section-label-sm">💡 המלצות לשיפור</div>';tips.forEach(function(t){html+='<div class="tip-item">'+t.icon+'<div class="tip-item-text"><div class="tip-item-title">'+t.title+'</div><div class="tip-item-msg">'+t.msg+'</div></div></div>';});html+='</div>';}
+  
+  // action buttons
+  html+='<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:24px;">';
+  html+='<button class="btn btn-primary" onclick="reRecord()">🔁 הקלט שוב</button>';
+  html+='<button class="btn btn-gray" onclick="goIntro()">חזור להתחלה</button>';
+  html+='</div>';
+  
+  document.getElementById('results-content').innerHTML=html;
 }
 
 // ─── delete single entry ───
