@@ -236,6 +236,7 @@ var sessions=[];
 // Live feedback tracking
 var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
 var recentWPM=[], fillerDetected=0;
+var currentWPM=0; // IMPORTANT: Make this global!
 
 // ─── Load logo on startup ───
 (function(){
@@ -380,6 +381,9 @@ function startRecording(){
     document.getElementById('stats-words').textContent='0';
     document.getElementById('stats-wpm').textContent='0';
   }
+  // Show debug status
+  var debugStatus=document.getElementById('debug-status');
+  if(debugStatus) debugStatus.style.display='block';
 
   // MediaRecorder
   var mimeType='';
@@ -443,7 +447,12 @@ function startRecording(){
   timerInterval=setInterval(function(){
     elapsed++;
     
-    // Update debug status
+    // Calculate metrics FIRST (before using them!)
+    var currentWords=lastWordCount;
+    var timeSinceStart=elapsed/60;
+    currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0; // Update global
+    
+    // NOW update UI with calculated values
     var debugStatus=document.getElementById('debug-feedback-status');
     if(debugStatus) debugStatus.textContent='💬 '+elapsed+'s | Words:'+lastWordCount+' | WPM:'+currentWPM;
     
@@ -458,11 +467,6 @@ function startRecording(){
       document.getElementById('stats-time').textContent=fmtTime(elapsed);
       document.getElementById('stats-words').textContent=lastWordCount;
     }
-    
-    // Calculate metrics
-    var currentWords=lastWordCount;
-    var timeSinceStart=elapsed/60;
-    var currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
     
     // Update WPM in stats
     if(statsBox){
@@ -770,7 +774,15 @@ function analyse(){
   }
 }
 
-function reRecord(){showPage('page-camera');}
+function reRecord(){
+  // Hide old results elements
+  var debugStatus=document.getElementById('debug-status');
+  if(debugStatus) debugStatus.style.display='none';
+  var statsBox=document.getElementById('stats-box');
+  if(statsBox) statsBox.classList.add('hidden');
+  
+  showPage('page-camera');
+}
 
 // ─── save recording to device ───
 function saveRecording(id){
@@ -781,6 +793,28 @@ function saveRecording(id){
   if(confirm('השמירה תפתח את הוידאו בחלון חדש.\n\nאחרי שהוידאו נפתח:\n1. לחץ לחיצה ארוכה על הוידאו\n2. בחר "שמור וידאו"\n\nלהמשיך?')){
     window.open(entry.blobUrl,'_blank');
   }
+}
+
+// ─── view saved session ───
+function viewSession(id){
+  var entry=sessions.find(function(e){return e.id==id;});
+  if(!entry) return;
+  
+  // Populate faceData from saved entry
+  faceData={
+    eye:Array(entry.duration).fill(entry.eye),
+    posture:Array(entry.duration).fill(entry.posture),
+    expr:Array(entry.duration).fill(entry.expr/100)
+  };
+  
+  // Populate other data
+  transcript=entry.transcript||'';
+  elapsed=entry.duration;
+  currentType=entry.type;
+  recordedBlob=null; // Can't restore blob from localStorage
+  
+  // Show results
+  analyse();
 }
 
 // ─── delete single entry ───
@@ -828,14 +862,14 @@ function renderHistory(){
     var d=new Date(e.id);
     var dateStr=d.toLocaleDateString('he-IL',{day:'numeric',month:'short'});
     var timeStr=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-    html+='<div class="history-item">';
+    html+='<div class="history-item" onclick="viewSession('+e.id+')" style="cursor:pointer;">';
     html+='<div class="history-item-left">';
     html+='<div class="history-item-title">'+typeLabels[e.type]+' · '+fmtTime(e.duration)+'</div>';
     html+='<div class="history-item-sub">'+dateStr+' בשעה '+timeStr+'</div>';
     html+='</div>';
     html+='<div class="history-actions">';
     html+='<div class="history-item-score" style="color:'+scoreColor(e.overall)+'">'+e.overall+'</div>';
-    html+='<button class="btn btn-red-outline" style="width:auto;padding:6px 10px;font-size:13px;" onclick="deleteEntry('+e.id+')">🗑️</button>';
+    html+='<button class="btn btn-red-outline" style="width:auto;padding:6px 10px;font-size:13px;" onclick="event.stopPropagation();deleteEntry('+e.id+')">🗑️</button>';
     html+='</div></div>';
   });
   list.innerHTML=html;
