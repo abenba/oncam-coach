@@ -207,9 +207,11 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
             <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
           </div>
         </div>
-        <div id="speech-status-bar" style="background:rgba(251,191,36,0.3);border-radius:6px;padding:10px;text-align:center;cursor:pointer;border:2px dashed #f59e0b;" onclick="manualStartSpeech()">
-          <div id="speech-status-text" style="font-size:14px;font-weight:700;color:#92400e;line-height:1.4;">🎤 אמור "שלום" כדי להפעיל<br><span style="font-size:11px;font-weight:400;">(לחץ כאן אם לא עובד)</span></div>
-          <button id="speech-retry-btn" style="display:none;margin-top:6px;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">🔄 נסה שוב</button>
+        <button id="speech-activate-btn" onclick="manualStartSpeech()" style="width:100%;background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border:none;border-radius:8px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(245,158,11,0.4);margin-top:8px;display:block;">
+          🎤 לחץ כאן להפעלת המיקרופון
+        </button>
+        <div id="speech-status-bar" style="background:rgba(16,185,129,0.1);border-radius:6px;padding:8px;text-align:center;margin-top:8px;display:none;">
+          <div id="speech-status-text" style="font-size:13px;font-weight:600;color:#10b981;">✓ המיקרופון עובד - המשך לדבר!</div>
         </div>
       </div>
       
@@ -421,38 +423,52 @@ function stopStream(){
 
 // ─── manual speech recognition start ───
 function manualStartSpeech(){
-  if(!recognizer){
-    console.warn('[SPEECH] No recognizer available yet - wait for recording to start');
-    alert('נא להתחיל הקלטה קודם!');
-    return;
-  }
-  console.log('[SPEECH] Manual start triggered by user');
+  console.log('[SPEECH] 🟢 User clicked activation button');
   
-  var statusText=document.getElementById('speech-status-text');
+  var activateBtn=document.getElementById('speech-activate-btn');
   var statusBar=document.getElementById('speech-status-bar');
+  var statusText=document.getElementById('speech-status-text');
   
-  // Show loading
+  // Hide button
+  if(activateBtn) activateBtn.style.display='none';
+  
+  // Show loading status
+  if(statusBar){
+    statusBar.style.display='block';
+    statusBar.style.background='rgba(245,158,11,0.2)';
+  }
   if(statusText){
-    statusText.textContent='מנסה להפעיל מיקרופון...';
+    statusText.textContent='מפעיל מיקרופון...';
     statusText.style.color='#f59e0b';
   }
-  if(statusBar) statusBar.style.background='rgba(245,158,11,0.3)';
   
-  try{
-    recognizer.stop(); // Stop first if already running
-    setTimeout(function(){
-      recognizer.start();
-      console.log('[SPEECH] Recognizer restarted by user');
-    },300);
-    
-    var btn=document.getElementById('speech-retry-btn');
-    if(btn) btn.style.display='none';
-  }catch(e){
-    console.error('[SPEECH] Manual start failed:',e);
+  if(!recognizer){
+    console.warn('[SPEECH] No recognizer available yet');
     if(statusText){
-      statusText.textContent='שגיאה - נסה שוב או בדוק הרשאות';
+      statusText.textContent='❌ השירות לא זמין - רענן את הדף';
       statusText.style.color='#ef4444';
     }
+    return;
+  }
+  
+  try{
+    // Stop and restart to force activation
+    recognizer.stop();
+    setTimeout(function(){
+      try{
+        recognizer.start();
+        console.log('[SPEECH] ✓ Recognizer restarted by user click');
+      }catch(e){
+        console.error('[SPEECH] Restart failed:',e);
+        if(statusText){
+          statusText.textContent='❌ שגיאה - נסה שוב';
+          statusText.style.color='#ef4444';
+        }
+        if(activateBtn) activateBtn.style.display='block';
+      }
+    },300);
+  }catch(e){
+    console.error('[SPEECH] Manual start failed:',e);
   }
 }
 
@@ -523,11 +539,19 @@ function startRecording(){
       speechStarted=true;
       retryAttempts=0; // Stop retrying
       console.log('[SPEECH] ✓ Started listening successfully!');
+      
+      var activateBtn=document.getElementById('speech-activate-btn');
       var statusBar=document.getElementById('speech-status-bar');
       var statusText=document.getElementById('speech-status-text');
-      if(statusBar) statusBar.style.background='rgba(16,185,129,0.2)';
+      
+      // Hide button, show green status
+      if(activateBtn) activateBtn.style.display='none';
+      if(statusBar){
+        statusBar.style.display='block';
+        statusBar.style.background='rgba(16,185,129,0.2)';
+      }
       if(statusText){
-        statusText.innerHTML='✓ המיקרופון עובד!<br><span style="font-size:11px;font-weight:400;">המשך לדבר...</span>';
+        statusText.innerHTML='✓ המיקרופון עובד!<br><span style="font-size:11px;">המשך לדבר...</span>';
         statusText.style.color='#10b981';
       }
     };
@@ -598,8 +622,19 @@ function startRecording(){
       }
     };
     recognizer.onend=function(){
+      console.log('[SPEECH] Recognition ended, restarting...');
       lastFinalIndex=0;
-      if(mediaRec&&mediaRec.state==='recording'){try{recognizer.start();}catch(e){}}
+      if(mediaRec&&mediaRec.state==='recording'){
+        // Restart immediately - iOS stops recognition after silence
+        setTimeout(function(){
+          try{
+            console.log('[SPEECH] Restarting after onend...');
+            recognizer.start();
+          }catch(e){
+            console.error('[SPEECH] Restart failed:',e);
+          }
+        },100); // Very short delay
+      }
     };
     recognizer.onerror=function(e){
       console.log('[SPEECH] Error: '+e.error+', will retry...');
@@ -733,6 +768,25 @@ function startRecording(){
     // Debug every 5 seconds
     if(elapsed%5===0){
       console.log('[DEBUG] @'+elapsed+'s - Words:'+lastWordCount+' WPM:'+currentWPM+' Speech:'+(recognizer?'exists':'null'));
+      
+      // KEEPALIVE: Check if recognizer is still running
+      if(recognizer && mediaRec && mediaRec.state==='recording'){
+        // Try a small vibration to keep device awake (if supported)
+        if(navigator.vibrate){
+          navigator.vibrate(1); // 1ms vibration - barely noticeable
+        }
+        
+        // Force restart if no words detected in last 10 seconds
+        if(elapsed>10 && lastWordCount===0){
+          console.warn('[SPEECH] No words after '+elapsed+'s, forcing restart...');
+          try{
+            recognizer.stop();
+            setTimeout(function(){recognizer.start();},200);
+          }catch(e){
+            console.error('[SPEECH] Force restart failed:',e);
+          }
+        }
+      }
     }
     
     // Calculate metrics FIRST (before using them!)
