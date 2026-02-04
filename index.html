@@ -202,10 +202,9 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
             <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
           </div>
         </div>
-        <div id="speech-status-bar" style="background:rgba(239,68,68,0.2);border-radius:6px;padding:6px;text-align:center;cursor:pointer;" onclick="manualStartSpeech()">
-          <span style="font-size:11px;color:#fbbf24;">🎤 </span>
-          <span id="speech-status-text" style="font-size:11px;font-weight:600;color:#fbbf24;">מתחבר למיקרופון...</span>
-          <button id="speech-retry-btn" style="display:none;margin-right:8px;background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;">הפעל מיקרופון</button>
+        <div id="speech-status-bar" style="background:rgba(251,191,36,0.3);border-radius:6px;padding:8px;text-align:center;cursor:pointer;border:2px dashed #f59e0b;" onclick="manualStartSpeech()">
+          <div id="speech-status-text" style="font-size:13px;font-weight:700;color:#92400e;">👆 לחץ כאן ודבר כדי להפעיל את המיקרופון</div>
+          <button id="speech-retry-btn" style="display:none;margin-top:4px;background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;">נסה שוב</button>
         </div>
       </div>
       
@@ -418,18 +417,40 @@ function stopStream(){
 // ─── manual speech recognition start ───
 function manualStartSpeech(){
   if(!recognizer){
-    console.warn('[SPEECH] No recognizer available');
+    console.warn('[SPEECH] No recognizer available yet - wait for recording to start');
+    alert('נא להתחיל הקלטה קודם!');
     return;
   }
   console.log('[SPEECH] Manual start triggered by user');
+  
+  var statusText=document.getElementById('speech-status-text');
+  var statusBar=document.getElementById('speech-status-bar');
+  
+  // Show loading
+  if(statusText){
+    statusText.textContent='מנסה להפעיל מיקרופון...';
+    statusText.style.color='#f59e0b';
+  }
+  if(statusBar) statusBar.style.background='rgba(245,158,11,0.3)';
+  
   try{
-    recognizer.start();
+    recognizer.stop(); // Stop first if already running
+    setTimeout(function(){
+      recognizer.start();
+      console.log('[SPEECH] Recognizer restarted by user');
+    },300);
+    
     var btn=document.getElementById('speech-retry-btn');
     if(btn) btn.style.display='none';
   }catch(e){
     console.error('[SPEECH] Manual start failed:',e);
+    if(statusText){
+      statusText.textContent='שגיאה - נסה שוב או בדוק הרשאות';
+      statusText.style.color='#ef4444';
+    }
   }
 }
+
 
 // ─── recording ───
 function startRecording(){
