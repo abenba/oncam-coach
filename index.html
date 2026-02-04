@@ -471,10 +471,10 @@ function startRecording(){
   document.getElementById('timer-card').classList.remove('hidden');
   document.getElementById('live-tx').classList.add('hidden');
   document.getElementById('live-tx-text').textContent='';
-  // Hide stats box initially, will show when timer starts
+  // Show stats box immediately
   var statsBox=document.getElementById('stats-box');
   if(statsBox){
-    statsBox.classList.add('hidden');
+    statsBox.classList.remove('hidden'); // Show immediately!
     document.getElementById('stats-time').textContent='00:00';
     document.getElementById('stats-words').textContent='0';
     document.getElementById('stats-wpm').textContent='0';
@@ -484,10 +484,14 @@ function startRecording(){
   var statusText=document.getElementById('speech-status-text');
   var statusBar=document.getElementById('speech-status-bar');
   if(statusText){
-    statusText.textContent='מתחיל מיקרופון...';
-    statusText.style.color='#f59e0b';
+    statusText.textContent='👆 לחץ כאן ודבר כדי להפעיל';
+    statusText.style.color='#92400e';
+    statusText.style.fontSize='13px';
   }
-  if(statusBar) statusBar.style.background='rgba(245,158,11,0.2)';
+  if(statusBar){
+    statusBar.style.background='rgba(251,191,36,0.3)';
+    statusBar.style.border='2px dashed #f59e0b';
+  }
 
   // MediaRecorder
   var mimeType='';
@@ -648,6 +652,15 @@ function startRecording(){
     
     // Start first attempt immediately
     tryStart();
+    
+    // If not started after 3 seconds, prompt user
+    setTimeout(function(){
+      if(!speechStarted && mediaRec && mediaRec.state==='recording'){
+        console.warn('[SPEECH] Not started after 3s, showing prompt');
+        alert('❗ המיקרופון טוען...\n\nאמור "שלום" או כל מילה כדי להפעיל!\n\n(זו מגבלה של iOS - המיקרופון מתעורר רק כשמדברים)');
+      }
+    },3000);
+    
   }else{
     console.warn('[SPEECH] Speech Recognition not supported');
   }
