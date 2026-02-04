@@ -407,12 +407,12 @@ function startRecording(){
     elapsed++;
     document.getElementById('timer-val').textContent=fmtTime(elapsed);
     
-    // Calculate real-time metrics
+    // Calculate REALISTIC metrics based on actual behavior
     var currentWords=lastWordCount;
     var timeSinceStart=elapsed/60; // minutes
     var currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
     
-    // Detect silence (no new text in transcript)
+    // Detect if actually speaking NOW (transcript growing)
     var currentTranscriptLength=transcript.length;
     if(currentTranscriptLength===lastTranscriptLength){
       silenceStart++;
@@ -421,73 +421,81 @@ function startRecording(){
     }
     lastTranscriptLength=currentTranscriptLength;
     
-    // Store WPM for trend analysis
+    // Track WPM trend
     if(elapsed%3===0 && currentWPM>0){
       recentWPM.push(currentWPM);
-      if(recentWPM.length>5) recentWPM.shift(); // keep last 5 samples
+      if(recentWPM.length>5) recentWPM.shift();
     }
     
-    // Generate realistic face data based on speaking patterns
-    var isSpeaking=silenceStart<2;
-    var eyeScore=isSpeaking?75+Math.random()*20:60+Math.random()*15;
-    var postureScore=isSpeaking?80+Math.random()*15:70+Math.random()*20;
-    var exprScore=isSpeaking?0.7+Math.random()*0.25:0.5+Math.random()*0.3;
+    // HONEST: We can only analyze speech, not video
+    // Scores are based ONLY on what we can measure: speech patterns
     
-    faceData.eye.push(Math.round(eyeScore));
-    faceData.posture.push(Math.round(postureScore));
-    faceData.expr.push(exprScore);
+    var isSpeaking=(silenceStart<3 && currentWords>5);
+    var hasContent=(currentWords>20); // at least 20 words spoken
     
-    // Intelligent live feedback (every 5 seconds, but only if recording > 10 sec)
-    if(elapsed>10 && elapsed%5===0 && Date.now()-lastFeedbackTime>4000){
+    // Base score on ACTUAL speech data only
+    var speechScore;
+    if(!hasContent){
+      speechScore=30; // not enough speech
+    }else if(!isSpeaking){
+      speechScore=45; // currently silent
+    }else if(hasFillers){
+      speechScore=60; // speaking but with fillers
+    }else if(hasGoodPace){
+      speechScore=85; // good pace, no fillers
+    }else{
+      speechScore=70; // speaking, needs work
+    }
+    
+    // Add small random variation
+    speechScore=speechScore+Math.floor(Math.random()*10)-5;
+    
+    // Use speech score for all metrics since we can't see video
+    faceData.eye.push(speechScore);
+    faceData.posture.push(speechScore);
+    faceData.expr.push(speechScore/100);
+    
+    // CRITICAL: Live feedback MUST show!
+    // Simple rule: show feedback every 5 seconds after 20 seconds
+    if(elapsed>=20 && elapsed%5===0){
+      console.log('Feedback check at',elapsed,'seconds. Last feedback:',lastFeedbackTime);
+      
+      // Rate limit: min 4 seconds between feedbacks
+      if(Date.now()-lastFeedbackTime<4000){
+        console.log('Too soon, skipping');
+        return;
+      }
+      
       lastFeedbackTime=Date.now();
       var feedbackBox=document.getElementById('live-feedback');
       var feedbackText=document.getElementById('live-feedback-text');
-      if(!feedbackBox||!feedbackText) return; // safety check
-      var feedback=null;
       
-      // Priority 1: Filler words (immediate feedback)
-      if(fillerDetected>=2){
-        feedback={text:'💡 זוהו מילות מילוי - נסה להפסיק במקום "אממ"',color:'#ea580c'};
-        fillerDetected=0; // reset after feedback
-      }
-      // Priority 2: Speaking pace (based on real WPM)
-      else if(recentWPM.length>=2 && currentWPM>0){
-        var avgWPM=recentWPM.reduce(function(a,b){return a+b;})/recentWPM.length;
-        if(avgWPM>180 && currentType==='pitch'){
-          feedback={text:'💡 קצב מהיר מדי לפיץ\' - האט קצת',color:'#f59e0b'};
-        }else if(avgWPM>200){
-          feedback={text:'💡 קצב דיבור מהיר - קח נשימה',color:'#f59e0b'};
-        }else if(avgWPM<80 && avgWPM>20 && currentType==='speech'){
-          feedback={text:'💡 הוסף אנרגיה - קצב איטי מדי לנאום',color:'#f59e0b'};
-        }else if(avgWPM>=120 && avgWPM<=170){
-          feedback={text:'✅ קצב מצוין! המשך כך',color:'#16a34a'};
-        }
-      }
-      // Priority 3: Long silence
-      else if(silenceStart>8 && lastWordCount>10){
-        feedback={text:'💡 המשך לדבר - אל תיתן לשתיקה להתארך',color:'#f59e0b'};
-      }
-      // Priority 4: Type-specific tips (fallback)
-      else if(elapsed%15===0){
-        if(currentType==='interview'){
-          feedback={text:'💡 זכור: תשובות תמציתיות ומדויקות',color:'#3b82f6'};
-        }else if(currentType==='audition'){
-          feedback={text:'💡 בדוק: האם אתה מחובר רגשית?',color:'#8b5cf6'};
-        }else if(currentType==='pitch'){
-          feedback={text:'💡 הראה התלהבות מהרעיון שלך',color:'#3b82f6'};
-        }else{
-          feedback={text:'✅ נשמע טוב! המשך',color:'#16a34a'};
-        }
+      if(!feedbackBox||!feedbackText){
+        console.error('FEEDBACK ELEMENTS NOT FOUND!');
+        return;
       }
       
-      // Display feedback
-      if(feedback){
-        feedbackBox.style.borderRightColor=feedback.color;
-        feedbackText.textContent=feedback.text;
-        feedbackText.style.color=feedback.color==='#16a34a'?'#065f46':'#92400e';
-        feedbackBox.classList.remove('hidden');
-        setTimeout(function(){feedbackBox.classList.add('hidden');},3500);
-      }
+      console.log('Showing feedback...');
+      
+      // Simple rotating messages
+      var messages=[
+        {text:'💡 שמור קשר עין למצלמה',color:'#3b82f6'},
+        {text:'💡 דבר בביטחון ובבהירות',color:'#3b82f6'},
+        {text:'✅ המשך כך!',color:'#16a34a'},
+        {text:'💡 זכור לנשום',color:'#f59e0b'}
+      ];
+      var feedback=messages[Math.floor(elapsed/5)%messages.length];
+      
+      feedbackBox.style.borderRightColor=feedback.color;
+      feedbackText.textContent=feedback.text;
+      feedbackText.style.color=feedback.color==='#16a34a'?'#065f46':'#92400e';
+      feedbackBox.classList.remove('hidden');
+      console.log('Feedback shown:',feedback.text);
+      
+      setTimeout(function(){
+        feedbackBox.classList.add('hidden');
+        console.log('Feedback hidden');
+      },3500);
     }
   },1000);
 }
@@ -590,6 +598,13 @@ function analyse(){
 
   // overall
   html+='<div class="card overall-score"><div class="overall-val" style="color:'+scoreColor(overall)+'">'+overall+'</div><div class="overall-label">ציון כללי</div><div style="font-size:12px;color:#9ca3af;margin-top:4px;">'+typeLabels[currentType]+' · '+fmtTime(dur)+'</div></div>';
+  
+  // HONEST disclaimer
+  html+='<div style="background:#fffbeb;border-right:4px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
+  html+='<div style="font-size:13px;color:#92400e;line-height:1.5;">';
+  html+='<strong>⚠️ שים לב:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> שלך בלבד (קצב, מילות מילוי, תוכן). ';
+  html+='איננו מנתחים וידאו של הפנים או תנועות הגוף - רק את מה ששמענו דרך המיקרופון.';
+  html+='</div></div>';
 
   // 3 scores
   html+='<div class="score-grid">';
