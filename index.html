@@ -136,6 +136,11 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         <div class="info-box-item">✓ וודא תאורה טובה על הפנים</div>
         <div class="info-box-item">✓ רקע פשוט ללא הסחת דעת</div>
       </div>
+      <div class="info-box" style="background:#fee2e2;border-right:4px solid:#ef4444;margin-top:12px;">
+        <div class="info-box-title">🎤 חשוב: הפעלת מיקרופון</div>
+        <div class="info-box-item" style="font-weight:600;">אחרי שתתחיל הקלטה, אמור "שלום" כדי להפעיל את זיהוי הקול</div>
+        <div class="info-box-item" style="font-size:12px;color:#7f1d1d;">⚠️ זוהי מגבלה של iPhone - המיקרופון מתעורר רק כשמדברים בפעם הראשונה</div>
+      </div>
       <div class="err-box" id="err-box"><div class="err-title">⚠️ שגיעה</div><div class="err-msg" id="err-msg"></div></div>
       <button class="btn btn-primary" onclick="startCamera()">בחר אימון ✨</button>
     </div>
@@ -202,9 +207,9 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
             <div id="stats-wpm" style="font-size:20px;font-weight:700;color:#f59e0b;">0</div>
           </div>
         </div>
-        <div id="speech-status-bar" style="background:rgba(251,191,36,0.3);border-radius:6px;padding:8px;text-align:center;cursor:pointer;border:2px dashed #f59e0b;" onclick="manualStartSpeech()">
-          <div id="speech-status-text" style="font-size:13px;font-weight:700;color:#92400e;">👆 לחץ כאן ודבר כדי להפעיל את המיקרופון</div>
-          <button id="speech-retry-btn" style="display:none;margin-top:4px;background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;">נסה שוב</button>
+        <div id="speech-status-bar" style="background:rgba(251,191,36,0.3);border-radius:6px;padding:10px;text-align:center;cursor:pointer;border:2px dashed #f59e0b;" onclick="manualStartSpeech()">
+          <div id="speech-status-text" style="font-size:14px;font-weight:700;color:#92400e;line-height:1.4;">🎤 אמור "שלום" כדי להפעיל<br><span style="font-size:11px;font-weight:400;">(לחץ כאן אם לא עובד)</span></div>
+          <button id="speech-retry-btn" style="display:none;margin-top:6px;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">🔄 נסה שוב</button>
         </div>
       </div>
       
@@ -522,7 +527,7 @@ function startRecording(){
       var statusText=document.getElementById('speech-status-text');
       if(statusBar) statusBar.style.background='rgba(16,185,129,0.2)';
       if(statusText){
-        statusText.textContent='מקשיב...';
+        statusText.innerHTML='✓ המיקרופון עובד!<br><span style="font-size:11px;font-weight:400;">המשך לדבר...</span>';
         statusText.style.color='#10b981';
       }
     };
@@ -652,14 +657,6 @@ function startRecording(){
     
     // Start first attempt immediately
     tryStart();
-    
-    // If not started after 3 seconds, prompt user
-    setTimeout(function(){
-      if(!speechStarted && mediaRec && mediaRec.state==='recording'){
-        console.warn('[SPEECH] Not started after 3s, showing prompt');
-        alert('❗ המיקרופון טוען...\n\nאמור "שלום" או כל מילה כדי להפעיל!\n\n(זו מגבלה של iOS - המיקרופון מתעורר רק כשמדברים)');
-      }
-    },3000);
     
   }else{
     console.warn('[SPEECH] Speech Recognition not supported');
