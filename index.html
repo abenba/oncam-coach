@@ -204,7 +204,7 @@ var stream=null, mediaRec=null, chunks=[], recognizer=null, timerInterval=null;
 var elapsed=0, transcript="", interimText="", faceData={eye:[],posture:[],expr:[]};
 var recordedBlob=null, currentLang="he-IL", currentType="pitch";
 // history stored in memory (array of objects)
-var history=[];
+var sessions=[];
 
 // ─── page nav ───
 function showPage(id){
@@ -262,7 +262,7 @@ async function startCamera(){
     }
     
     // Set up video element
-    vid.volume=0; // iOS: use volume instead of muted attribute
+    vid.muted=true; // Mute video to prevent echo/feedback
     
     // Wait for metadata before playing
     vid.onloadedmetadata=function(){
@@ -440,7 +440,7 @@ function analyse(){
     transcript:transcript,duration:dur,
     blobUrl:recordedBlob?URL.createObjectURL(recordedBlob):null
   };
-  history.unshift(entry); // newest first
+  sessions.unshift(entry); // newest first
 
   // ─── build results HTML ───
   var typeLabels={pitch:"פיץ'",speech:"נאום",interview:"ראיון",audition:"אודישן"};
@@ -516,7 +516,7 @@ function reRecord(){showPage('page-camera');}
 
 // ─── save recording to device ───
 function saveRecording(id){
-  var entry=history.find(function(e){return e.id==id;});
+  var entry=sessions.find(function(e){return e.id==id;});
   if(!entry||!entry.blobUrl) return;
   // iOS Safari: open blob URL in new tab — user can then long-press → Save Video
   // Also try the download attribute approach as fallback for non-iOS
@@ -533,14 +533,14 @@ function saveRecording(id){
 
 // ─── delete single entry ───
 function deleteEntry(id){
-  history=history.filter(function(e){return e.id!=id;});
+  sessions=sessions.filter(function(e){return e.id!=id;});
   // if on results page, go back
   goIntro();
 }
 
 // ─── delete all ───
 function deleteAll(){
-  history=[];
+  sessions=[];
   renderHistory();
 }
 
@@ -548,7 +548,7 @@ function deleteAll(){
 function renderHistory(){
   var list=document.getElementById('history-list');
   var delBtn=document.getElementById('btn-delete-all');
-  if(history.length===0){
+  if(sessions.length===0){
     list.innerHTML='<div class="history-empty">אין אימונים נשמרים עוד</div>';
     delBtn.classList.add('hidden');
     return;
@@ -556,7 +556,7 @@ function renderHistory(){
   delBtn.classList.remove('hidden');
   var typeLabels={pitch:"פיץ'",speech:"נאום",interview:"ראיון",audition:"אודישן"};
   var html='';
-  history.forEach(function(e){
+  sessions.forEach(function(e){
     var d=new Date(e.id);
     var dateStr=d.toLocaleDateString('he-IL',{day:'numeric',month:'short'});
     var timeStr=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
