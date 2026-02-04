@@ -116,12 +116,10 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
 <!-- ═══ INTRO ═══ -->
 <div id="page-intro" class="page">
   <div class="wrap">
-    <div style="text-align:center;margin-bottom:16px;padding-top:10px;">
-      <div style="display:inline-flex;background:#e0e7ff;border-radius:50%;padding:14px;margin-bottom:10px;">
-        <svg width="42" height="42" fill="none" stroke="#4f46e5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      </div>
-      <h1 style="font-size:28px;font-weight:700;color:#111827;margin:0;">OnCam Coach</h1>
-      <p style="font-size:15px;color:#6b7280;margin-top:4px;">Speak better on camera</p>
+    <div style="text-align:center;margin-bottom:20px;padding-top:20px;">
+      <img id="app-logo" src="" alt="OnCam Coach" style="width:120px;height:120px;margin:0 auto 16px;display:block;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+      <h1 style="font-size:32px;font-weight:700;color:#111827;margin:0;">OnCam Coach</h1>
+      <p style="font-size:16px;color:#6b7280;margin-top:6px;">Speak better on camera · perform better on stage</p>
     </div>
     <div class="card">
       <p style="font-size:14px;color:#374151;line-height:1.6;text-align:right;margin-bottom:16px;">כלי אימון אישי לשיפור ההופעה שלך מול מצלמה ובמה. האפליקציה מנתחת את הביצוע שלך ומספקת משוב מיידי על שפת גוף, קצב דיבור וקשר עין.</p>
@@ -204,11 +202,39 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
 var stream=null, mediaRec=null, chunks=[], recognizer=null, timerInterval=null;
 var elapsed=0, transcript="", interimText="", faceData={eye:[],posture:[],expr:[]};
 var recordedBlob=null, currentLang="he-IL", currentType="pitch";
-// history stored in memory (array of objects)
+// Persistent storage with localStorage
 var sessions=[];
 // Live feedback tracking
 var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
 var recentWPM=[], fillerDetected=0;
+
+// ─── Load logo on startup ───
+(function(){
+  var logo=document.getElementById('app-logo');
+  // Try to load from GitHub (user will upload logo.png to repository)
+  logo.src='https://raw.githubusercontent.com/abenba/oncam-coach/main/logo.png';
+  logo.onerror=function(){
+    // Fallback: use a nice gradient if logo not found
+    logo.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    logo.style.display='flex';
+    logo.style.alignItems='center';
+    logo.style.justifyContent='center';
+    logo.innerHTML='<span style="font-size:48px;">🎬</span>';
+  };
+})();
+
+// ─── Load sessions from localStorage on startup ───
+(function(){
+  try{
+    var saved=localStorage.getItem('oncam-sessions');
+    if(saved){
+      sessions=JSON.parse(saved);
+      // Remove blobUrls (can't persist)
+      sessions.forEach(function(s){s.blobUrl=null;});
+    }
+  }catch(e){}
+  renderHistory();
+})();
 
 // ─── page nav ───
 function showPage(id){
@@ -416,15 +442,16 @@ function startRecording(){
       lastFeedbackTime=Date.now();
       var feedbackBox=document.getElementById('live-feedback');
       var feedbackText=document.getElementById('live-feedback-text');
+      if(!feedbackBox||!feedbackText) return; // safety check
       var feedback=null;
       
       // Priority 1: Filler words (immediate feedback)
-      if(fillerDetected>=2 && elapsed<30){
+      if(fillerDetected>=2){
         feedback={text:'💡 זוהו מילות מילוי - נסה להפסיק במקום "אממ"',color:'#ea580c'};
         fillerDetected=0; // reset after feedback
       }
       // Priority 2: Speaking pace (based on real WPM)
-      else if(recentWPM.length>=3){
+      else if(recentWPM.length>=2 && currentWPM>0){
         var avgWPM=recentWPM.reduce(function(a,b){return a+b;})/recentWPM.length;
         if(avgWPM>180 && currentType==='pitch'){
           feedback={text:'💡 קצב מהיר מדי לפיץ\' - האט קצת',color:'#f59e0b'};
@@ -432,21 +459,25 @@ function startRecording(){
           feedback={text:'💡 קצב דיבור מהיר - קח נשימה',color:'#f59e0b'};
         }else if(avgWPM<80 && avgWPM>20 && currentType==='speech'){
           feedback={text:'💡 הוסף אנרגיה - קצב איטי מדי לנאום',color:'#f59e0b'};
+        }else if(avgWPM>=120 && avgWPM<=170){
+          feedback={text:'✅ קצב מצוין! המשך כך',color:'#16a34a'};
         }
       }
       // Priority 3: Long silence
-      else if(silenceStart>8 && currentWords>10){
+      else if(silenceStart>8 && lastWordCount>10){
         feedback={text:'💡 המשך לדבר - אל תיתן לשתיקה להתארך',color:'#f59e0b'};
       }
-      // Priority 4: Good performance
-      else if(currentWPM>=120 && currentWPM<=170 && fillerDetected===0){
-        feedback={text:'✅ קצב מצוין! המשך כך',color:'#16a34a'};
-      }
-      // Priority 5: Type-specific tips
-      else if(currentType==='interview' && elapsed%15===0){
-        feedback={text:'💡 זכור: תשובות תמציתיות ומדויקות',color:'#3b82f6'};
-      }else if(currentType==='audition' && elapsed%15===0){
-        feedback={text:'💡 בדוק: האם אתה מחובר רגשית?',color:'#8b5cf6'};
+      // Priority 4: Type-specific tips (fallback)
+      else if(elapsed%15===0){
+        if(currentType==='interview'){
+          feedback={text:'💡 זכור: תשובות תמציתיות ומדויקות',color:'#3b82f6'};
+        }else if(currentType==='audition'){
+          feedback={text:'💡 בדוק: האם אתה מחובר רגשית?',color:'#8b5cf6'};
+        }else if(currentType==='pitch'){
+          feedback={text:'💡 הראה התלהבות מהרעיון שלך',color:'#3b82f6'};
+        }else{
+          feedback={text:'✅ נשמע טוב! המשך',color:'#16a34a'};
+        }
       }
       
       // Display feedback
@@ -532,13 +563,26 @@ function analyse(){
   var entry={
     id:Date.now(),
     type:currentType,
-    date:new Date(),
+    date:new Date().toISOString(), // Convert to string for localStorage
     overall:overall,eye:eye,posture:posture,expr:expr,
     wpm:wpm,words:words,fillerCount:fillerCount,fillerDetails:fillerDetails,
     transcript:transcript,duration:dur,
     blobUrl:recordedBlob?URL.createObjectURL(recordedBlob):null
   };
   sessions.unshift(entry); // newest first
+  
+  // Save to localStorage (without blobUrl which can't be stored)
+  try{
+    var toSave=sessions.map(function(s){
+      return {
+        id:s.id,type:s.type,date:s.date,
+        overall:s.overall,eye:s.eye,posture:s.posture,expr:s.expr,
+        wpm:s.wpm,words:s.words,fillerCount:s.fillerCount,fillerDetails:s.fillerDetails,
+        transcript:s.transcript,duration:s.duration
+      };
+    });
+    localStorage.setItem('oncam-sessions',JSON.stringify(toSave));
+  }catch(e){}
 
   // ─── build results HTML ───
   var typeLabels={pitch:"פיץ'",speech:"נאום",interview:"ראיון",audition:"אודישן"};
@@ -626,14 +670,30 @@ function saveRecording(id){
 // ─── delete single entry ───
 function deleteEntry(id){
   sessions=sessions.filter(function(e){return e.id!=id;});
-  // if on results page, go back
+  saveSessions();
   goIntro();
 }
 
 // ─── delete all ───
 function deleteAll(){
   sessions=[];
+  saveSessions();
   renderHistory();
+}
+
+// ─── save sessions to localStorage ───
+function saveSessions(){
+  try{
+    var toSave=sessions.map(function(s){
+      return {
+        id:s.id,type:s.type,date:s.date,
+        overall:s.overall,eye:s.eye,posture:s.posture,expr:s.expr,
+        wpm:s.wpm,words:s.words,fillerCount:s.fillerCount,fillerDetails:s.fillerDetails,
+        transcript:s.transcript,duration:s.duration
+      };
+    });
+    localStorage.setItem('oncam-sessions',JSON.stringify(toSave));
+  }catch(e){}
 }
 
 // ─── render history on intro ───
