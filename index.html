@@ -134,7 +134,7 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         <div class="info-box-item">✓ שב במרחד 50–80 ס"מ מהמסך</div>
         <div class="info-box-item">✓ המצלמה בגובה העיניים</div>
         <div class="info-box-item">✓ וודא תאורה טובה על הפנים</div>
-        <div class="info-box-item">✓ רקה פשוט וללא הסחות דעת</div>
+        <div class="info-box-item">✓ רקע פשוט ללא הסחת דעת</div>
       </div>
       <div class="err-box" id="err-box"><div class="err-title">⚠️ שגיעה</div><div class="err-msg" id="err-msg"></div></div>
       <button class="btn btn-primary" onclick="startCamera()">בחר אימון ✨</button>
@@ -204,7 +204,7 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         </div>
         <div id="speech-status-bar" style="background:rgba(239,68,68,0.2);border-radius:6px;padding:6px;text-align:center;">
           <span style="font-size:11px;color:#fbbf24;">🎤 </span>
-          <span id="speech-status-text" style="font-size:11px;font-weight:600;color:#fbbf24;">ממתין למיקרופון...</span>
+          <span id="speech-status-text" style="font-size:11px;font-weight:600;color:#fbbf24;">מתחבר למיקרופון...</span>
         </div>
       </div>
       
@@ -519,6 +519,10 @@ function startRecording(){
       if(newText){
         var words=transcript.trim().split(/\s+/).filter(function(w){return w.length>0;}).length;
         lastWordCount=words;
+        
+        // Update UI immediately
+        var statsWords=document.getElementById('stats-words');
+        if(statsWords) statsWords.textContent=words;
       }
     };
     recognizer.onend=function(){
@@ -953,7 +957,7 @@ function analyse(){
   html+='<div class="card-sm"><div class="section-label-sm" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><svg width="18" height="18" fill="none" stroke="#4f46e5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg> ניתוח דיבור</div><div class="speech-grid">';
   html+='<div class="speech-stat"><div class="stat-num">'+wpm+'</div><div class="stat-label">מילים לדקה</div>'+(wpm>=120&&wpm<=160?'<div class="stat-tag" style="color:#16a34a;">✓ אידיאלי</div>':'')+'</div>';
   html+='<div class="speech-stat"><div class="stat-num">'+words+'</div><div class="stat-label">סה"כ מילים</div></div>';
-  html+='<div class="speech-stat"><div class="stat-num">'+fillerCount+'</div><div class="stat-label">מילות מילוי</div>'+(fillerCount>5?'<div class="stat-tag" style="color:#ea580c;">הפחת</div>':'')+'</div></div>';
+  html+='<div class="speech-stat"><div class="stat-num">'+fillerCount+'</div><div class="stat-label">מילות מילוי<br><span style="font-size:10px;color:#9ca3af;">(אממ, אהה, כאילו)</span></div>'+(fillerCount>5?'<div class="stat-tag" style="color:#ea580c;">הפחת</div>':'')+'</div></div>';
   if(fillerDetails.length>0){html+='<div class="filler-box"><div class="filler-box-title">מילות מילוי שזוהו:</div><div class="filler-tags">';fillerDetails.forEach(function(f){html+='<span class="filler-tag">'+f.word+' ('+f.count+')</span>';});html+='</div></div>';}
   html+='</div>';
 
@@ -1064,9 +1068,9 @@ function viewSession(id){
   html+='<div class="card overall-score"><div class="overall-val" style="color:'+scoreColor(overall)+'">'+overall+'</div><div class="overall-label">ציון כללי</div><div style="font-size:12px;color:#9ca3af;margin-top:4px;">'+typeLabels[currentType]+' · '+fmtTime(dur)+'</div></div>';
   
   // Analysis info
-  html+='<div style="background:#e0f2fe;border-right:4px solid:#0284c7;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
-  html+='<div style="font-size:13px;color:#075985;line-height:1.5;">';
-  html+='<strong>ℹ️ ניתוח דיבור:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן, שתיקות).';
+  html+='<div style="background:#fef3c7;border-right:4px solid:#f59e0b;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
+  html+='<div style="font-size:13px;color:#92400e;line-height:1.5;">';
+  html+='<strong>ℹ️ אימון משוחזר:</strong> זהו אימון שמור. הנתונים והציונים נשמרו, אך <strong>הוידאו עצמו לא נשמר</strong> (כדי לחסוך מקום).';
   html+='</div></div>';
   
   // 3 scores
@@ -1080,7 +1084,7 @@ function viewSession(id){
   html+='<div class="card-sm" style="display:flex;gap:8px;margin-bottom:8px;">';
   html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">⏱️</div><div class="stat-val">'+wpm+'</div><div class="stat-label">מילים לדקה</div></div>';
   html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">💬</div><div class="stat-val">'+words+'</div><div class="stat-label">סה"כ מילים</div></div>';
-  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">⚠️</div><div class="stat-val">'+fillerCount+'</div><div class="stat-label">מילות מילוי</div></div>';
+  html+='<div class="stat-card" style="flex:1;"><div class="stat-icon">⚠️</div><div class="stat-val">'+fillerCount+'</div><div class="stat-label">מילות עצירה<div style="font-size:9px;color:#9ca3af;">(אממ, אהה)</div></div></div>';
   html+='</div>';
   
   // transcript
