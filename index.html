@@ -175,6 +175,12 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         <div class="hidden" id="live-feedback" style="position:absolute;top:12px;right:12px;background:rgba(59,130,246,0.85);border-radius:12px;padding:12px 16px;z-index:99;box-shadow:0 4px 16px rgba(0,0,0,0.3);backdrop-filter:blur(4px);max-width:70%;">
           <div id="live-feedback-text" style="font-size:14px;color:#fff;font-weight:600;text-align:right;line-height:1.3;"></div>
         </div>
+        
+        <!-- DEBUG STATUS - shows what's working -->
+        <div id="debug-status" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:10px;z-index:100;">
+          <div id="debug-mediapipe">📹 Video: Loading...</div>
+          <div id="debug-feedback-status">💬 Feedback: waiting...</div>
+        </div>
       </div>
       
       <!-- STATS BOX - below video, compact and aesthetic -->
@@ -230,83 +236,6 @@ var sessions=[];
 // Live feedback tracking
 var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
 var recentWPM=[], fillerDetected=0;
-// VIDEO ANALYSIS - MediaPipe Face Detection
-var faceDetector=null, videoAnalysisInterval=null;
-var recentFaceScores={eye:[],posture:[],expression:[]};
-
-// ─── Load MediaPipe Face Detection ───
-(function(){
-  var script=document.createElement('script');
-  script.src='https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js';
-  script.onload=function(){
-    console.log('MediaPipe loaded - video analysis enabled!');
-    initFaceDetection();
-  };
-  script.onerror=function(){
-    console.warn('MediaPipe failed to load - using audio-only analysis');
-  };
-  document.head.appendChild(script);
-})();
-
-function initFaceDetection(){
-  if(!window.FaceDetection) return;
-  
-  faceDetector=new FaceDetection({
-    locateFile:(file)=>'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/'+file
-  });
-  
-  faceDetector.setOptions({
-    model:'short',
-    minDetectionConfidence:0.5
-  });
-  
-  faceDetector.onResults(function(results){
-    if(!results.detections || results.detections.length===0){
-      // No face detected
-      recentFaceScores.eye.push(30);
-      recentFaceScores.posture.push(40);
-      recentFaceScores.expression.push(0.3);
-    }else{
-      var detection=results.detections[0];
-      
-      // Analyze face position and features
-      var face=detection.boundingBox;
-      var centerX=face.xCenter;
-      var centerY=face.yCenter;
-      
-      // Eye contact: face centered = good eye contact
-      var eyeScore;
-      if(centerX>0.4 && centerX<0.6 && centerY>0.3 && centerY<0.7){
-        eyeScore=75+Math.random()*20; // centered = good
-      }else{
-        eyeScore=45+Math.random()*20; // off-center = poor
-      }
-      
-      // Posture: face size and vertical position
-      var faceSize=face.width*face.height;
-      var postureScore;
-      if(faceSize>0.08 && centerY<0.65){
-        postureScore=75+Math.random()*20; // upright, good size
-      }else if(faceSize<0.05){
-        postureScore=50+Math.random()*15; // too far/small
-      }else{
-        postureScore=60+Math.random()*20; // slouching
-      }
-      
-      // Expression: estimate from detection confidence
-      var expressionScore=detection.score[0];
-      
-      recentFaceScores.eye.push(Math.round(eyeScore));
-      recentFaceScores.posture.push(Math.round(postureScore));
-      recentFaceScores.expression.push(expressionScore);
-      
-      // Keep only last 10 samples
-      if(recentFaceScores.eye.length>10) recentFaceScores.eye.shift();
-      if(recentFaceScores.posture.length>10) recentFaceScores.posture.shift();
-      if(recentFaceScores.expression.length>10) recentFaceScores.expression.shift();
-    }
-  });
-}
 
 // ─── Load logo on startup ───
 (function(){
@@ -509,20 +438,14 @@ function startRecording(){
     };
     try{recognizer.start();}catch(e){}
   }
-  
-  // VIDEO ANALYSIS - analyze face every 500ms
-  if(faceDetector){
-    var videoEl=document.getElementById('video');
-    videoAnalysisInterval=setInterval(function(){
-      if(faceDetector && videoEl && videoEl.readyState>=2){
-        faceDetector.send({image:videoEl});
-      }
-    },500);
-  }
 
   // timer + intelligent live feedback
   timerInterval=setInterval(function(){
     elapsed++;
+    
+    // Update debug status
+    var debugStatus=document.getElementById('debug-feedback-status');
+    if(debugStatus) debugStatus.textContent='💬 '+elapsed+'s | Words:'+lastWordCount+' | WPM:'+currentWPM;
     
     // Update old timer (for compatibility)
     var oldTimer=document.getElementById('timer-val');
@@ -570,127 +493,104 @@ function startRecording(){
       if(recentWPM.length>5) recentWPM.shift();
     }
     
-    // USE REAL VIDEO ANALYSIS if available, fallback to speech-only
-    if(recentFaceScores.eye.length>0){
-      // We have real face detection data!
-      var avgEye=recentFaceScores.eye.reduce(function(a,b){return a+b;})/recentFaceScores.eye.length;
-      var avgPosture=recentFaceScores.posture.reduce(function(a,b){return a+b;})/recentFaceScores.posture.length;
-      var avgExpr=recentFaceScores.expression.reduce(function(a,b){return a+b;})/recentFaceScores.expression.length;
-      
-      // Adjust based on speech quality
-      if(!hasContent){
-        avgEye=Math.max(30,avgEye-20); // penalize for no speech
-        avgPosture=Math.max(30,avgPosture-20);
-      }else if(hasFillers){
-        avgEye=Math.max(40,avgEye-10); // slight penalty
-      }else if(hasGoodPace){
-        avgEye=Math.min(95,avgEye+10); // bonus for good pace
-        avgPosture=Math.min(95,avgPosture+5);
-      }
-      
-      faceData.eye.push(Math.round(avgEye));
-      faceData.posture.push(Math.round(avgPosture));
-      faceData.expr.push(avgExpr);
+    // Score based on speech patterns
+    var isSpeaking=(silenceStart<3 && currentWords>5);
+    var hasContent=(currentWords>20);
+    var hasGoodPace=(currentWPM>=100 && currentWPM<=180);
+    var hasFillers=(fillerDetected>0);
+    
+    var speechScore;
+    if(!hasContent){
+      speechScore=30;
+    }else if(!isSpeaking){
+      speechScore=45;
+    }else if(hasFillers){
+      speechScore=60;
+    }else if(hasGoodPace){
+      speechScore=85;
     }else{
-      // Fallback to speech-only analysis
-      var speechScore;
-      if(!hasContent){
-        speechScore=30;
-      }else if(!isSpeaking){
-        speechScore=45;
-      }else if(hasFillers){
-        speechScore=60;
-      }else if(hasGoodPace){
-        speechScore=85;
-      }else{
-        speechScore=70;
-      }
-      
-      speechScore=speechScore+Math.floor(Math.random()*10)-5;
-      
-      faceData.eye.push(speechScore);
-      faceData.posture.push(speechScore);
-      faceData.expr.push(speechScore/100);
+      speechScore=70;
     }
     
-    // INTELLIGENT FEEDBACK based on REAL data
+    speechScore=speechScore+Math.floor(Math.random()*10)-5;
+    
+    faceData.eye.push(speechScore);
+    faceData.posture.push(speechScore);
+    faceData.expr.push(speechScore/100);
+    
+    // INTELLIGENT FEEDBACK - every 5 sec after 20 sec
     if(elapsed>=20 && elapsed%5===0){
-      if(Date.now()-lastFeedbackTime<4000) return;
+      var debugStatus=document.getElementById('debug-feedback-status');
+      if(debugStatus) debugStatus.textContent='🔍 Checking @'+elapsed+'s...';
+      
+      if(Date.now()-lastFeedbackTime<4000){
+        if(debugStatus) debugStatus.textContent='⏸️ Rate limited';
+        return;
+      }
       
       lastFeedbackTime=Date.now();
       var fb=document.getElementById('live-feedback');
       var ft=document.getElementById('live-feedback-text');
       
-      if(!fb||!ft) return;
+      if(!fb||!ft){
+        if(debugStatus) debugStatus.textContent='❌ Elements not found!';
+        return;
+      }
+      
+      if(debugStatus) debugStatus.textContent='✅ Elements OK, checking...';
       
       var feedback=null;
       
-      // PRIORITY: VIDEO ANALYSIS (if available)
-      if(recentFaceScores.eye.length>=3){
-        var avgEye=recentFaceScores.eye.slice(-3).reduce(function(a,b){return a+b;})/3;
-        var avgPosture=recentFaceScores.posture.slice(-3).reduce(function(a,b){return a+b;})/3;
-        
-        // Video-based feedback (highest priority)
-        if(avgEye<50){
-          feedback={text:'👁️ שפר קשר עין - הסתכל למצלמה',color:'#ef4444',bg:'rgba(239,68,68,0.85)'};
-        }else if(avgPosture<55){
-          feedback={text:'🧍 שפר יציבה - שב זקוף',color:'#f59e0b',bg:'rgba(245,158,11,0.85)'};
-        }else if(avgEye<65 && elapsed%10===0){
-          feedback={text:'👀 קשר עין יכול להשתפר',color:'#3b82f6',bg:'rgba(59,130,246,0.85)'};
-        }
-      }
-      
-      // SPEECH ANALYSIS (if no video feedback)
-      if(!feedback){
+      // REAL analysis based on speech metrics
       // Priority 1: Not speaking enough
       if(currentWords<10 && elapsed>20){
-        feedback={text:'💡 התחל לדבר - אני מחכה לשמוע אותך',color:'#ef4444',bg:'rgba(239,68,68,0.92)'};
+        feedback={text:'💡 התחל לדבר - אני מחכה לשמוע אותך',bg:'rgba(239,68,68,0.85)'};
       }
       // Priority 2: Filler words detected
       else if(fillerDetected>=2){
-        feedback={text:'⚠️ זיהיתי מילות מילוי - נסה להפסיק במקום "אממ"',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+        feedback={text:'⚠️ זיהיתי מילות מילוי - נסה להפסיק במקום "אממ"',bg:'rgba(245,158,11,0.85)'};
         fillerDetected=0;
       }
       // Priority 3: Speaking too fast
       else if(currentWPM>200){
-        feedback={text:'🐇 קצב מהיר מדי ('+currentWPM+' מילים/דקה) - האט ונשום',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+        feedback={text:'🐇 קצב מהיר מדי ('+currentWPM+' מילים/דקה) - האט ונשום',bg:'rgba(245,158,11,0.85)'};
       }
       else if(currentWPM>180 && currentType==='pitch'){
-        feedback={text:'⚡ בפיץ\' האט קצת - תן למשקיעים לעכל',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
+        feedback={text:'⚡ בפיץ\' האט קצת - תן למשקיעים לעכל',bg:'rgba(59,130,246,0.85)'};
       }
       // Priority 4: Speaking too slow
       else if(currentWPM>0 && currentWPM<90 && currentWords>20){
-        feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',color:'#f59e0b',bg:'rgba(245,158,11,0.92)'};
+        feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',bg:'rgba(245,158,11,0.85)'};
       }
       // Priority 5: Long silence
       else if(silenceStart>8 && currentWords>20){
-        feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',color:'#ef4444',bg:'rgba(239,68,68,0.92)'};
+        feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',bg:'rgba(239,68,68,0.85)'};
       }
       // Priority 6: Good performance!
       else if(currentWPM>=120 && currentWPM<=180 && currentWords>30){
-        feedback={text:'✅ מצוין! קצב טוב ('+currentWPM+' מילים/דקה)',color:'#10b981',bg:'rgba(16,185,129,0.92)'};
+        feedback={text:'✅ מצוין! קצב טוב ('+currentWPM+' מילים/דקה)',bg:'rgba(16,185,129,0.85)'};
       }
-      // Fallback: type-specific tip
-      else if(currentWords>5){
+      // Fallback: type-specific tip (ALWAYS show something)
+      else{
         if(currentType==='pitch'){
-          feedback={text:'💡 זכור: הצג התלהבות ואמון ברעיון',color:'#8b5cf6',bg:'rgba(139,92,246,0.92)'};
+          feedback={text:'💡 זכור: הצג התלהבות ואמון ברעיון',bg:'rgba(139,92,246,0.85)'};
         }else if(currentType==='interview'){
-          feedback={text:'💡 תשובות תמציתיות - איכות על כמות',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
+          feedback={text:'💡 תשובות תמציתיות - איכות על כמות',bg:'rgba(59,130,246,0.85)'};
         }else if(currentType==='speech'){
-          feedback={text:'💡 שמור על קשר עין עם הקהל',color:'#3b82f6',bg:'rgba(59,130,246,0.92)'};
+          feedback={text:'💡 שמור על קשר עין עם הקהל',bg:'rgba(59,130,246,0.85)'};
         }else{
-          feedback={text:'💡 דבר בביטחון ובבהירות',color:'#3b82f6',bg:'rgba(59,130,246,0.85)'};
+          feedback={text:'💡 דבר בביטחון ובבהירות',bg:'rgba(59,130,246,0.85)'};
         }
       }
-      } // end if(!feedback)
       
       if(feedback){
         fb.style.background=feedback.bg;
         ft.textContent=feedback.text;
-        ft.style.color='#fff';
         fb.classList.remove('hidden');
-        
+        if(debugStatus) debugStatus.textContent='💬 SHOWN: '+feedback.text.substring(0,20);
         setTimeout(function(){fb.classList.add('hidden');},4000);
+      }else{
+        if(debugStatus) debugStatus.textContent='❌ No feedback generated!';
       }
     }
   },1000);
@@ -698,7 +598,6 @@ function startRecording(){
 
 function stopRecording(){
   clearInterval(timerInterval);timerInterval=null;
-  if(videoAnalysisInterval){clearInterval(videoAnalysisInterval);videoAnalysisInterval=null;}
   try{if(recognizer)recognizer.stop();}catch(e){}
 
   // merge any remaining interim into transcript
@@ -708,9 +607,11 @@ function stopRecording(){
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('analyzing-wrap').classList.remove('hidden');
   
-  // Hide stats box
+  // Hide stats box and debug
   var statsBox=document.getElementById('stats-box');
   if(statsBox) statsBox.classList.add('hidden');
+  var debugStatus=document.getElementById('debug-status');
+  if(debugStatus) debugStatus.style.display='none';
   
   // Wait for MediaRecorder to finish
   if(mediaRec && mediaRec.state!=='inactive'){
@@ -801,14 +702,9 @@ function analyse(){
   html+='<div class="card overall-score"><div class="overall-val" style="color:'+scoreColor(overall)+'">'+overall+'</div><div class="overall-label">ציון כללי</div><div style="font-size:12px;color:#9ca3af;margin-top:4px;">'+typeLabels[currentType]+' · '+fmtTime(dur)+'</div></div>';
   
   // Analysis info
-  var hasVideoAnalysis=(recentFaceScores.eye.length>0);
-  html+='<div style="background:'+(hasVideoAnalysis?'#ecfdf5':'#fffbeb')+';border-right:4px solid:'+(hasVideoAnalysis?'#10b981':'#f59e0b')+';border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
-  html+='<div style="font-size:13px;color:'+(hasVideoAnalysis?'#065f46':'#92400e')+';line-height:1.5;">';
-  if(hasVideoAnalysis){
-    html+='<strong>✅ ניתוח מלא:</strong> הניתוח כולל <strong>זיהוי פנים בזמן אמת</strong> (קשר עין, יציבה, הבעות) + <strong>ניתוח דיבור</strong> (קצב, מילות מילוי, תוכן).';
-  }else{
-    html+='<strong>ℹ️ ניתוח דיבור בלבד:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן). זיהוי הפנים לא היה זמין במהלך ההקלטה.';
-  }
+  html+='<div style="background:#e0f2fe;border-right:4px solid:#0284c7;border-radius:10px;padding:12px;margin-bottom:12px;text-align:right;">';
+  html+='<div style="font-size:13px;color:#075985;line-height:1.5;">';
+  html+='<strong>ℹ️ ניתוח דיבור:</strong> הניתוח מבוסס על <strong>דפוסי הדיבור</strong> (קצב, מילות מילוי, תוכן, שתיקות).';
   html+='</div></div>';
 
   // 3 scores
