@@ -810,7 +810,7 @@ function startRecording(){
     if(wordCountHistory.length>60) wordCountHistory.shift();
     
     // Calculate WPM based on recent activity (last 15 seconds for faster response)
-    if(wordCountHistory.length>=2 && elapsed>5){
+    if(wordCountHistory.length>=2 && elapsed>10){
       // Find word count 15 seconds ago
       var lookbackTime=Math.max(0,elapsed-15);
       var oldEntry=null;
@@ -830,36 +830,44 @@ function startRecording(){
         // Fallback to total average
         var timeSinceStart=elapsed/60;
         currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
+        console.log('[WPM] Using total average: '+currentWords+' words in '+Math.round(elapsed)+'s = '+currentWPM+' WPM');
       }
-    }else{
-      // Not enough data, use total average
+    }else if(elapsed>=5 && currentWords>0){
+      // Use simple average for first 10 seconds
       var timeSinceStart=elapsed/60;
       currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
+      console.log('[WPM] Early calc: '+currentWords+' words in '+Math.round(elapsed)+'s = '+currentWPM+' WPM');
+    }else{
+      // Not enough time or words yet
+      currentWPM=0;
     }
     
     // Update old timer (for compatibility)
     var oldTimer=document.getElementById('timer-val');
     if(oldTimer) oldTimer.textContent=fmtTime(elapsed);
     
-    // Update NEW stats box
+    // Update NEW stats box (merged update for efficiency)
     var statsBox=document.getElementById('stats-box');
     if(statsBox){
       statsBox.classList.remove('hidden');
+      statsBox.style.display='block'; // Ensure it's visible
+      
+      // Update time and words
       document.getElementById('stats-time').textContent=fmtTime(elapsed);
-      document.getElementById('stats-words').textContent=lastWordCount;
-    }
-    
-    // Update WPM in stats
-    if(statsBox){
+      document.getElementById('stats-words').textContent=currentWords; // Use currentWords, not lastWordCount
+      
+      // Update WPM with color coding
       var wpmEl=document.getElementById('stats-wpm');
-      wpmEl.textContent=currentWPM;
-      // Color code: green=good, yellow=ok, red=bad
-      if(currentWPM>=120 && currentWPM<=180){
-        wpmEl.style.color='#10b981';
-      }else if(currentWPM>0){
-        wpmEl.style.color='#f59e0b';
-      }else{
-        wpmEl.style.color='#94a3b8';
+      if(wpmEl){
+        wpmEl.textContent=currentWPM;
+        // Color code: green=good (120-180), yellow=needs adjustment, gray=no speech
+        if(currentWPM>=120 && currentWPM<=180){
+          wpmEl.style.color='#10b981'; // Perfect pace
+        }else if(currentWPM>0){
+          wpmEl.style.color='#f59e0b'; // Needs adjustment
+        }else{
+          wpmEl.style.color='#94a3b8'; // No speech yet
+        }
       }
     }
     
@@ -1000,38 +1008,48 @@ function startRecording(){
         }
       }
       
+      console.log('[FEEDBACK] Check @'+elapsed+'s | WPM:'+currentWPM+' | Words:'+currentWords+' | History:'+wordCountHistory.length);
+      
       // SPEECH ANALYSIS (if no video feedback)
       if(!feedback){
       // Priority 1: Not speaking enough
       if(currentWords<10 && elapsed>20){
         feedback={text:'💡 התחל לדבר - אני מחכה לשמוע אותך',bg:'rgba(239,68,68,0.85)'};
+        console.log('[FEEDBACK] Showing: Not enough words');
       }
       // Priority 2: Filler words detected
       else if(fillerDetected>=2){
         feedback={text:'⚠️ זיהיתי מילות מילוי - נסה להפסיק במקום "אממ"',bg:'rgba(245,158,11,0.85)'};
+        console.log('[FEEDBACK] Showing: Filler words');
         fillerDetected=0;
       }
       // Priority 3: Speaking too fast
       else if(currentWPM>200){
         feedback={text:'🐇 קצב מהיר מדי ('+currentWPM+' מילים/דקה) - האט ונשום',bg:'rgba(245,158,11,0.85)'};
+        console.log('[FEEDBACK] Showing: Too fast - '+currentWPM+' WPM');
       }
       else if(currentWPM>180 && currentType==='pitch'){
         feedback={text:'⚡ בפיץ\' האט קצת - תן למשקיעים לעכל',bg:'rgba(59,130,246,0.85)'};
+        console.log('[FEEDBACK] Showing: Fast for pitch');
       }
       // Priority 4: Speaking too slow
       else if(currentWPM>0 && currentWPM<90 && currentWords>20){
         feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',bg:'rgba(245,158,11,0.85)'};
+        console.log('[FEEDBACK] Showing: Too slow - '+currentWPM+' WPM');
       }
       // Priority 5: Long silence
       else if(silenceStart>8 && currentWords>20){
         feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',bg:'rgba(239,68,68,0.85)'};
+        console.log('[FEEDBACK] Showing: Long silence');
       }
       // Priority 6: Good performance!
       else if(currentWPM>=120 && currentWPM<=180 && currentWords>30){
         feedback={text:'✅ מצוין! קצב טוב ('+currentWPM+' מילים/דקה)',bg:'rgba(16,185,129,0.85)'};
+        console.log('[FEEDBACK] Showing: Good pace - '+currentWPM+' WPM');
       }
       // Fallback: type-specific tip (ALWAYS show something)
       else{
+        console.log('[FEEDBACK] Showing: Type-specific tip (WPM='+currentWPM+', Words='+currentWords+')');
         if(currentType==='pitch'){
           feedback={text:'💡 זכור: הצג התלהבות ואמון ברעיון',bg:'rgba(139,92,246,0.85)'};
         }else if(currentType==='interview'){
