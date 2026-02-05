@@ -2,36 +2,45 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnCam Coach - אימון נאומים</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>OnCam Coach</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Heebo', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 10px;
         }
         
         .container {
             width: 100%;
-            max-width: 600px;
-            padding: 20px;
+            max-width: 500px;
         }
         
         .page {
             display: none;
             background: white;
-            border-radius: 20px;
-            padding: 30px;
+            border-radius: 25px;
+            padding: 25px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .page.active {
@@ -41,30 +50,41 @@
         h1 {
             color: #667eea;
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 2em;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 35px;
+            font-size: 1em;
+            line-height: 1.6;
         }
         
         .btn {
             width: 100%;
-            padding: 15px;
-            margin: 10px 0;
+            padding: 18px;
+            margin: 12px 0;
             border: none;
-            border-radius: 10px;
+            border-radius: 15px;
             font-size: 1.1em;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            font-family: inherit;
         }
         
         .btn-primary {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
+        .btn-primary:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
         }
         
         .btn-secondary {
@@ -72,76 +92,105 @@
             color: #333;
         }
         
+        .btn-secondary:active {
+            background: #e0e0e0;
+        }
+        
         .btn-danger {
             background: #e74c3c;
             color: white;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+        
+        .btn-danger:active {
+            transform: scale(0.98);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         #video-container {
             position: relative;
             width: 100%;
             background: #000;
-            border-radius: 10px;
+            border-radius: 15px;
             overflow: hidden;
             margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         #video {
             width: 100%;
             display: block;
+            min-height: 300px;
         }
         
         #timer {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.8);
             color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 1.5em;
-            font-weight: bold;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.8em;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            backdrop-filter: blur(10px);
         }
         
         #stats-box {
             position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.85);
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.9);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 0.9em;
-            min-width: 200px;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 0.95em;
+            min-width: 180px;
+            backdrop-filter: blur(10px);
         }
         
         .stat-row {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
+            align-items: center;
+            margin: 8px 0;
         }
         
         .stat-label {
             color: #aaa;
+            font-size: 0.9em;
         }
         
         .stat-value {
-            font-weight: bold;
+            font-weight: 700;
             color: white;
+            font-size: 1.1em;
+            font-variant-numeric: tabular-nums;
         }
         
         #wpm-display {
-            font-size: 1.3em;
-            color: #4CAF50;
+            font-size: 1.4em;
+            font-weight: 700;
         }
         
         #feedback {
             text-align: center;
             padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
-            font-weight: bold;
+            margin: 15px 0;
+            border-radius: 12px;
+            font-weight: 600;
             display: none;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         #feedback.show {
@@ -149,69 +198,127 @@
         }
         
         #feedback.good {
-            background: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
+            border: 2px solid #b1dfbb;
         }
         
         #feedback.warning {
-            background: #fff3cd;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
             color: #856404;
+            border: 2px solid #ffd93d;
         }
         
         #feedback.error {
-            background: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
+            border: 2px solid #f1b0b7;
         }
         
         .transcript-box {
             background: #f8f9fa;
-            border: 2px solid #dee2e6;
-            border-radius: 10px;
-            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 18px;
             margin: 15px 0;
-            max-height: 200px;
+            max-height: 180px;
             overflow-y: auto;
             direction: rtl;
+            font-size: 0.95em;
+            line-height: 1.7;
+        }
+        
+        .transcript-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .transcript-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .transcript-box::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
         }
         
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin: 20px 0;
+            margin: 25px 0;
         }
         
         .result-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px 15px;
+            border-radius: 15px;
             text-align: center;
+            border: 2px solid #dee2e6;
+            transition: transform 0.2s ease;
+        }
+        
+        .result-card:active {
+            transform: scale(0.98);
         }
         
         .result-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-            margin: 10px 0;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 8px 0;
+            font-variant-numeric: tabular-nums;
         }
         
         .result-label {
             color: #666;
             font-size: 0.9em;
+            font-weight: 500;
         }
         
         #overall-score {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
-            border-radius: 15px;
+            padding: 35px;
+            border-radius: 20px;
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        #overall-score .score-label {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-weight: 600;
+            opacity: 0.95;
         }
         
         #overall-score .score {
-            font-size: 3em;
-            font-weight: bold;
+            font-size: 4em;
+            font-weight: 800;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        #overall-score .score-max {
+            margin-top: 10px;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .icon {
+            font-size: 1.3em;
+            margin-left: 8px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -219,34 +326,38 @@
     <div class="container">
         <!-- Home Page -->
         <div id="home-page" class="page active">
-            <h1>🎤 OnCam Coach</h1>
-            <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            <h1><span class="icon">🎤</span> OnCam Coach</h1>
+            <p class="subtitle">
                 אימון נאומים מבוסס AI<br>
-                שפר את כישורי הדיבור שלך
+                שפר את כישורי הדיבור שלך בזמן אמת
             </p>
-            <button class="btn btn-primary" onclick="goToCamera()">התחל אימון חדש</button>
-            <button class="btn btn-secondary" onclick="alert('בקרוב!')">היסטוריית אימונים</button>
+            <button class="btn btn-primary" onclick="goToCamera()">
+                <span class="icon">🚀</span> התחל אימון חדש
+            </button>
+            <button class="btn btn-secondary" onclick="showComingSoon()">
+                <span class="icon">📊</span> היסטוריית אימונים
+            </button>
         </div>
 
         <!-- Camera Page -->
         <div id="camera-page" class="page">
-            <h1>🎬 הקלטה</h1>
+            <h1><span class="icon">🎬</span> הקלטה</h1>
             
             <div id="video-container">
                 <video id="video" autoplay muted playsinline></video>
                 <div id="timer">00:00</div>
                 <div id="stats-box" style="display:none;">
                     <div class="stat-row">
-                        <span class="stat-label">⏱️ זמן:</span>
+                        <span class="stat-label">⏱️ זמן</span>
                         <span class="stat-value" id="stats-time">00:00</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">💬 מילים:</span>
+                        <span class="stat-label">💬 מילים</span>
                         <span class="stat-value" id="stats-words">0</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">🎯 קצב:</span>
-                        <span class="stat-value" id="stats-wpm">
+                        <span class="stat-label">🎯 קצב</span>
+                        <span class="stat-value">
                             <span id="wpm-display">0</span>
                         </span>
                     </div>
@@ -255,23 +366,29 @@
             
             <div id="feedback"></div>
             
-            <div class="transcript-box" id="transcript-box">
+            <div class="transcript-box">
                 <p id="transcript-text" style="color: #999;">התמלול יופיע כאן...</p>
             </div>
             
-            <button id="start-btn" class="btn btn-primary" onclick="startRecording()">התחל הקלטה</button>
-            <button id="stop-btn" class="btn btn-danger" onclick="stopRecording()" style="display:none;">עצור הקלטה</button>
-            <button class="btn btn-secondary" onclick="goHome()">חזור</button>
+            <button id="start-btn" class="btn btn-primary" onclick="startRecording()">
+                <span class="icon">⏺️</span> התחל הקלטה
+            </button>
+            <button id="stop-btn" class="btn btn-danger" onclick="stopRecording()" style="display:none;">
+                <span class="icon">⏹️</span> עצור הקלטה
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
+                <span class="icon">🏠</span> חזור
+            </button>
         </div>
 
         <!-- Results Page -->
         <div id="results-page" class="page">
-            <h1>📊 תוצאות</h1>
+            <h1><span class="icon">🏆</span> תוצאות האימון</h1>
             
             <div id="overall-score">
-                <div style="font-size: 1.2em; margin-bottom: 10px;">ציון כללי</div>
+                <div class="score-label">הציון הכללי שלך</div>
                 <div class="score" id="final-score">0</div>
-                <div style="margin-top: 10px;">מתוך 100</div>
+                <div class="score-max">מתוך 100</div>
             </div>
             
             <div class="results-grid">
@@ -288,18 +405,22 @@
                     <div class="result-value" id="result-time">0:00</div>
                 </div>
                 <div class="result-card">
-                    <div class="result-label">שטף הדיבור</div>
-                    <div class="result-value" id="result-fluency">-</div>
+                    <div class="result-label">שטף דיבור</div>
+                    <div class="result-value" id="result-fluency" style="font-size: 1.8em;">-</div>
                 </div>
             </div>
             
             <div class="transcript-box">
-                <h3 style="margin-bottom: 10px;">תמלול מלא:</h3>
-                <p id="result-transcript"></p>
+                <h3 style="margin-bottom: 12px; color: #667eea;">📝 תמלול מלא:</h3>
+                <p id="result-transcript" style="color: #666;"></p>
             </div>
             
-            <button class="btn btn-primary" onclick="reRecord()">אימון נוסף</button>
-            <button class="btn btn-secondary" onclick="goHome()">חזור לעמוד הבית</button>
+            <button class="btn btn-primary" onclick="reRecord()">
+                <span class="icon">🔄</span> אימון נוסף
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
+                <span class="icon">🏠</span> חזור לעמוד הבית
+            </button>
         </div>
     </div>
 
@@ -318,7 +439,7 @@
         let silenceStart = 0;
         let lastSilenceCheckWords = 0;
 
-        // Navigation
+        // Navigation functions
         function goToCamera() {
             document.getElementById('home-page').classList.remove('active');
             document.getElementById('camera-page').classList.add('active');
@@ -330,6 +451,12 @@
             document.getElementById('camera-page').classList.remove('active');
             document.getElementById('results-page').classList.remove('active');
             document.getElementById('home-page').classList.add('active');
+            
+            // Stop camera stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
         }
 
         function reRecord() {
@@ -338,25 +465,56 @@
             resetRecording();
         }
 
+        function showComingSoon() {
+            alert('התכונה הזו בפיתוח ותהיה זמינה בקרוב! 🚀');
+        }
+
         // Camera setup
         async function setupCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' }, 
-                    audio: true 
-                });
+                const constraints = {
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
                 document.getElementById('video').srcObject = stream;
+                console.log('[CAMERA] Setup successful');
             } catch (err) {
-                console.error('שגיאה בגישה למצלמה:', err);
-                alert('לא ניתן לגשת למצלמה. אנא בדוק את ההרשאות.');
+                console.error('[CAMERA] Error:', err);
+                let errorMsg = 'לא ניתן לגשת למצלמה והמיקרופון.\n';
+                
+                if (err.name === 'NotAllowedError') {
+                    errorMsg += 'אנא אפשר גישה בהגדרות הדפדפן.';
+                } else if (err.name === 'NotFoundError') {
+                    errorMsg += 'לא נמצאה מצלמה או מיקרופון.';
+                } else {
+                    errorMsg += 'שגיאה: ' + err.message;
+                }
+                
+                alert(errorMsg);
+                goHome();
             }
         }
 
         // Recording functions
         function startRecording() {
-            console.log('Starting recording...');
+            if (!stream) {
+                alert('אנא המתן עד שהמצלמה תהיה מוכנה');
+                return;
+            }
             
-            // Reset variables
+            console.log('[RECORDING] Starting...');
+            
+            // Reset all variables
             transcript = '';
             wordCount = 0;
             wordCountHistory = [];
@@ -373,28 +531,36 @@
             document.getElementById('feedback').classList.remove('show');
             
             // Show stats box
-            const statsBox = document.getElementById('stats-box');
-            statsBox.style.display = 'block';
+            document.getElementById('stats-box').style.display = 'block';
             
             // Start timer
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 1000);
             
             // Start video recording
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    recordedChunks.push(event.data);
-                }
-            };
-            mediaRecorder.start();
+            try {
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp8,opus'
+                });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.start(1000); // Collect data every second
+                console.log('[RECORDING] Video started');
+            } catch (err) {
+                console.error('[RECORDING] Video error:', err);
+            }
             
             // Start speech recognition
             startSpeechRecognition();
         }
 
         function stopRecording() {
-            console.log('Stopping recording...');
+            console.log('[RECORDING] Stopping...');
             
             // Stop timer
             if (timerInterval) {
@@ -410,6 +576,7 @@
             // Stop speech recognition
             if (recognition) {
                 recognition.stop();
+                recognition = null;
             }
             
             // Hide stats box
@@ -418,8 +585,10 @@
                 statsBox.style.display = 'none';
             }
             
-            // Calculate results
-            calculateResults();
+            // Calculate and show results
+            setTimeout(() => {
+                calculateResults();
+            }, 500);
             
             // Update UI
             document.getElementById('start-btn').style.display = 'block';
@@ -440,16 +609,23 @@
 
         // Speech recognition
         function startSpeechRecognition() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                console.error('Speech recognition not supported');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                console.error('[SPEECH] Not supported');
+                showFeedback('זיהוי דיבור לא נתמך בדפדפן זה', 'error');
                 return;
             }
             
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = true;
             recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            recognition.onstart = () => {
+                console.log('[SPEECH] Started');
+            };
             
             recognition.onresult = (event) => {
                 let interimTranscript = '';
@@ -466,27 +642,51 @@
                 
                 if (finalTranscript) {
                     transcript += finalTranscript;
-                    wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
-                    console.log('[SPEECH] New words:', wordCount);
+                    const words = transcript.trim().split(/\s+/).filter(w => w.length > 0);
+                    wordCount = words.length;
+                    console.log(`[SPEECH] Words: ${wordCount}`);
                 }
                 
-                // Update display
-                const displayText = transcript + (interimTranscript ? '<i style="color: #999;">' + interimTranscript + '</i>' : '');
+                // Update display with interim results
+                const displayText = transcript + (interimTranscript ? '<i style="color: #999; opacity: 0.7;">' + interimTranscript + '</i>' : '');
                 document.getElementById('transcript-text').innerHTML = displayText || 'מקליט...';
             };
             
             recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
+                console.error('[SPEECH] Error:', event.error);
+                
+                if (event.error === 'no-speech') {
+                    console.log('[SPEECH] No speech detected, continuing...');
+                } else if (event.error === 'audio-capture') {
+                    showFeedback('שגיאה בגישה למיקרופון', 'error');
+                } else if (event.error === 'not-allowed') {
+                    showFeedback('אנא אפשר גישה למיקרופון', 'error');
+                    stopRecording();
+                }
             };
             
             recognition.onend = () => {
-                console.log('Speech recognition ended');
+                console.log('[SPEECH] Ended');
+                // Restart if still recording
+                if (timerInterval && recognition) {
+                    console.log('[SPEECH] Restarting...');
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        console.error('[SPEECH] Restart error:', err);
+                    }
+                }
             };
             
-            recognition.start();
+            try {
+                recognition.start();
+            } catch (err) {
+                console.error('[SPEECH] Start error:', err);
+                showFeedback('שגיאה בהפעלת זיהוי הדיבור', 'error');
+            }
         }
 
-        // Timer and stats update
+        // Timer and stats updates
         function updateTimer() {
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
             const minutes = Math.floor(elapsed / 60);
@@ -502,19 +702,19 @@
             updateStatsDisplay(elapsed, wordCount, currentWPM);
             
             // Check for feedback
-            checkFeedback(elapsed);
+            if (elapsed % 5 === 0) { // Check every 5 seconds
+                checkFeedback(elapsed);
+            }
         }
 
         function calculateWPM(elapsed) {
-            const currentWords = wordCount;
-            
             // Add current word count to history
-            wordCountHistory.push({ time: elapsed, words: currentWords });
+            wordCountHistory.push({ time: elapsed, words: wordCount });
             
-            // Keep only last 30 seconds of history
+            // Keep only last 30 seconds
             wordCountHistory = wordCountHistory.filter(entry => entry.time > elapsed - 30);
             
-            // Calculate WPM using sliding window (last 15 seconds)
+            // Calculate using sliding window (15 seconds)
             const windowStart = elapsed - 15;
             const windowEntries = wordCountHistory.filter(entry => entry.time >= windowStart);
             
@@ -524,19 +724,19 @@
                 const timeDiff = newEntry.time - oldEntry.time;
                 const wordDiff = newEntry.words - oldEntry.words;
                 
-                if (timeDiff > 0) {
+                if (timeDiff > 0 && wordDiff > 0) {
                     currentWPM = Math.round((wordDiff / timeDiff) * 60);
-                    console.log(`[WPM] Sliding window: ${wordDiff} words in ${timeDiff}s = ${currentWPM} WPM`);
+                    console.log(`[WPM] Window: ${wordDiff} words in ${timeDiff}s = ${currentWPM}`);
                 }
             }
-            // Fallback: calculate from start (for first 10 seconds or if no sliding window data)
-            else if (elapsed >= 3 && currentWords > 0) {
-                currentWPM = Math.round((currentWords / elapsed) * 60);
-                console.log(`[WPM] Early calc: ${currentWords} words in ${elapsed}s = ${currentWPM} WPM`);
+            // Early stage calculation
+            else if (elapsed >= 3 && wordCount > 0) {
+                currentWPM = Math.round((wordCount / elapsed) * 60);
+                console.log(`[WPM] Early: ${wordCount} words in ${elapsed}s = ${currentWPM}`);
             }
-            // Very early stage - estimate if we have any words
-            else if (currentWords > 0 && elapsed > 0) {
-                currentWPM = Math.round((currentWords / elapsed) * 60);
+            // Very early
+            else if (wordCount > 0 && elapsed > 0) {
+                currentWPM = Math.round((wordCount / elapsed) * 60);
             }
             else {
                 currentWPM = 0;
@@ -544,44 +744,41 @@
         }
 
         function updateStatsDisplay(elapsed, words, wpm) {
+            // Update time
             const statsTimeEl = document.getElementById('stats-time');
-            const statsWordsEl = document.getElementById('stats-words');
-            const statsWpmEl = document.getElementById('wpm-display');
-            
             if (statsTimeEl) {
                 const minutes = Math.floor(elapsed / 60);
                 const seconds = elapsed % 60;
                 statsTimeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }
             
+            // Update words
+            const statsWordsEl = document.getElementById('stats-words');
             if (statsWordsEl) {
                 statsWordsEl.textContent = words;
             }
             
-            if (statsWpmEl) {
-                statsWpmEl.textContent = wpm;
+            // Update WPM with color coding
+            const wpmEl = document.getElementById('wpm-display');
+            if (wpmEl) {
+                wpmEl.textContent = wpm;
                 
-                // Color coding
                 if (wpm === 0) {
-                    statsWpmEl.style.color = '#999';
+                    wpmEl.style.color = '#999';
                 } else if (wpm >= 120 && wpm <= 180) {
-                    statsWpmEl.style.color = '#4CAF50'; // Green - perfect
-                } else if (wpm < 120 || wpm > 180) {
-                    statsWpmEl.style.color = '#FF9800'; // Orange - needs adjustment
+                    wpmEl.style.color = '#4CAF50'; // Perfect
+                } else {
+                    wpmEl.style.color = '#FF9800'; // Needs work
                 }
-                
-                console.log(`[STATS] Updated: Time=${statsTimeEl.textContent} Words=${words} WPM=${wpm}`);
             }
         }
 
         function checkFeedback(elapsed) {
-            // Don't show feedback in first 10 seconds
             if (elapsed < 10) return;
             
-            const feedbackEl = document.getElementById('feedback');
-            
-            // Check for silence (no new words in 25 seconds)
+            // Check for new words
             const wordsAddedRecently = (wordCount > lastSilenceCheckWords);
+            
             if (!wordsAddedRecently && wordCount > 10) {
                 silenceStart++;
             } else {
@@ -589,28 +786,21 @@
                 lastSilenceCheckWords = wordCount;
             }
             
-            console.log(`[FEEDBACK] Check @${elapsed}s | WPM:${currentWPM} | Words:${wordCount} | History:${wordCountHistory.length}`);
-            
-            // Show feedback based on WPM and silence
+            // Show feedback
             if (silenceStart > 25 && wordCount > 30) {
-                showFeedback('שתיקה ארוכה - המשך לדבר!', 'error');
-                console.log('[FEEDBACK] Showing: Long silence');
+                showFeedback('שתיקה ארוכה - המשך לדבר! 🎤', 'error');
             }
             else if (currentWPM > 0 && currentWPM < 100) {
-                showFeedback(`קצב איטי מדי (${currentWPM} WPM) - נסה להאיץ`, 'warning');
-                console.log(`[FEEDBACK] Showing: Too slow - ${currentWPM} WPM`);
+                showFeedback(`קצב איטי (${currentWPM} WPM) - נסה להאיץ ⚡`, 'warning');
             }
             else if (currentWPM > 200) {
-                showFeedback(`קצב מהיר מדי (${currentWPM} WPM) - האט קצת`, 'warning');
-                console.log(`[FEEDBACK] Showing: Too fast - ${currentWPM} WPM`);
+                showFeedback(`קצב מהיר (${currentWPM} WPM) - האט מעט 🐢`, 'warning');
             }
             else if (currentWPM >= 120 && currentWPM <= 180) {
-                showFeedback(`מצוין! קצב טוב (${currentWPM} WPM)`, 'good');
-                console.log(`[FEEDBACK] Showing: Perfect pace - ${currentWPM} WPM`);
+                showFeedback(`מצוין! קצב מושלם (${currentWPM} WPM) 🎯`, 'good');
             }
             else if (currentWPM > 0) {
-                showFeedback('שומע אותך!', 'good');
-                console.log('[FEEDBACK] Showing: Listening');
+                showFeedback('שומע אותך! המשך כך 👍', 'good');
             }
         }
 
@@ -618,6 +808,13 @@
             const feedbackEl = document.getElementById('feedback');
             feedbackEl.textContent = message;
             feedbackEl.className = 'show ' + type;
+            
+            // Auto-hide after 3 seconds for good messages
+            if (type === 'good') {
+                setTimeout(() => {
+                    feedbackEl.classList.remove('show');
+                }, 3000);
+            }
         }
 
         // Results calculation
@@ -626,7 +823,7 @@
             const minutes = elapsed / 60;
             
             // Calculate final WPM
-            const finalWPM = Math.round(wordCount / minutes);
+            const finalWPM = wordCount > 0 && minutes > 0 ? Math.round(wordCount / minutes) : 0;
             
             // Calculate score (0-100)
             let score = 0;
@@ -640,7 +837,7 @@
                 score += 40;
             } else if (finalWPM >= 80 && finalWPM < 100) {
                 score += 30;
-            } else {
+            } else if (finalWPM > 0) {
                 score += 20;
             }
             
@@ -649,8 +846,10 @@
                 score += 30;
             } else if (wordCount >= 50) {
                 score += 20;
-            } else {
+            } else if (wordCount >= 20) {
                 score += 10;
+            } else if (wordCount > 0) {
+                score += 5;
             }
             
             // Duration score (20 points)
@@ -658,20 +857,22 @@
                 score += 20;
             } else if (elapsed >= 30) {
                 score += 10;
-            } else {
+            } else if (elapsed >= 10) {
                 score += 5;
             }
             
             // Fluency rating
             let fluency = '';
             if (finalWPM >= 120 && finalWPM <= 180) {
-                fluency = 'מעולה';
+                fluency = 'מעולה ✨';
             } else if (finalWPM >= 100 && finalWPM < 120) {
-                fluency = 'טוב';
-            } else if (finalWPM < 100) {
-                fluency = 'איטי';
+                fluency = 'טוב 👍';
+            } else if (finalWPM > 180) {
+                fluency = 'מהיר ⚡';
+            } else if (finalWPM > 0) {
+                fluency = 'איטי 🐢';
             } else {
-                fluency = 'מהיר';
+                fluency = 'N/A';
             }
             
             // Update results page
