@@ -22,7 +22,22 @@
         .page { display: none; background: white; border-radius: 25px; padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .page.active { display: block; }
         h1 { color: #667eea; text-align: center; margin-bottom: 15px; font-size: 2em; font-weight: 700; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 30px; line-height: 1.5; }
+        .subtitle { 
+            text-align: center; 
+            margin-bottom: 35px; 
+            line-height: 1.8;
+        }
+        .subtitle-question {
+            font-size: 1.1em;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .subtitle-answer {
+            font-size: 1.05em;
+            color: #555;
+            font-weight: 500;
+        }
         .btn { width: 100%; padding: 18px; margin: 12px 0; border: none; border-radius: 15px; font-size: 1.1em; font-weight: 600; cursor: pointer; font-family: inherit; }
         .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .btn-secondary { background: #f0f0f0; color: #333; }
@@ -58,20 +73,58 @@
         .delete-btn { background: #e74c3c; color: white; border: none; width: 50px; height: 50px; border-radius: 12px; font-size: 1.5em; cursor: pointer; flex-shrink: 0; }
         .delete-btn:active { transform: scale(0.95); background: #c0392b; }
         .empty-state { text-align: center; padding: 40px; color: #999; }
+        .tips-box { 
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); 
+            border: 2px solid #81c784;
+            border-radius: 12px; 
+            padding: 18px; 
+            margin: 20px 0;
+            text-align: right;
+        }
+        .tips-box h3 { 
+            color: #2e7d32; 
+            margin-bottom: 12px; 
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tip-item { 
+            color: #1b5e20; 
+            margin: 10px 0; 
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 8px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .tip-icon { font-size: 1.2em; }
     </style>
 </head>
 <body>
     <div class="container">
         <div id="home-page" class="page active">
             <h1>🎤 OnCam Coach</h1>
-            <p class="subtitle">אימון נאומים בזמן אמת<br>עם בינה מלאכותית</p>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.1 • תיקון מלא</p>
+            <div class="subtitle">
+                <div class="subtitle-question">יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
+                <div class="subtitle-answer">אני - מאמן AI אישי, כאן בשבילך</div>
+            </div>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.2 • עם טיפים</p>
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
         </div>
 
         <div id="camera-page" class="page">
             <h1>🎬 הקלטה</h1>
+            
+            <div class="tips-box" id="tips-box">
+                <h3><span class="tip-icon">💡</span> טיפים להקלטה מוצלחת</h3>
+                <div class="tip-item"><span class="tip-icon">🎯</span> דבר בקצב של 120-180 מילים לדקה לתוצאה אופטימלית</div>
+                <div class="tip-item"><span class="tip-icon">👁️</span> שמור על קשר עין עם המצלמה - הסתכל ישירות לעדשה</div>
+                <div class="tip-item"><span class="tip-icon">🎤</span> דבר בבירור ובקול רם - זה יעזור לזיהוי הדיבור</div>
+                <div class="tip-item"><span class="tip-icon">💪</span> נסה לדבר לפחות דקה אחת לציון מדויק יותר</div>
+            </div>
+            
             <div id="video-container">
                 <video id="video" autoplay muted playsinline></video>
                 <div id="timer">00:00</div>
@@ -122,7 +175,12 @@
         let eyeScore = 100, eyeHistory = [];
         let lastWords = 0, silenceCount = 0;
 
-        function goToCamera() { show('camera-page'); setupCamera(); }
+        function goToCamera() { 
+            show('camera-page'); 
+            setupCamera();
+            // הצג טיפים
+            document.getElementById('tips-box').style.display = 'block';
+        }
         function goHome() {
             stopRecording();
             if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -153,6 +211,9 @@
             console.log('[RECORDING] ▶️ Starting...');
             transcript = ''; wordCount = 0; wordCountHistory = []; currentWPM = 0;
             eyeScore = 100; eyeHistory = []; lastWords = 0; silenceCount = 0;
+            
+            // הסתר טיפים
+            document.getElementById('tips-box').style.display = 'none';
             
             document.getElementById('start-btn').style.display = 'none';
             document.getElementById('stop-btn').style.display = 'block';
@@ -188,6 +249,9 @@
             document.getElementById('eye-contact').style.display = 'none';
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
+            
+            // הצג טיפים מחדש
+            document.getElementById('tips-box').style.display = 'block';
             
             setTimeout(showResults, 500);
         }
