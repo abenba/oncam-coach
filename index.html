@@ -257,6 +257,9 @@ var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
 var recentWPM=[], fillerDetected=0;
 var currentWPM=0; // IMPORTANT: Make this global!
 
+// Word count history for sliding window WPM calculation
+var wordCountHistory=[]; // [{timestamp, count}, ...]
+
 // VIDEO ANALYSIS with TensorFlow.js
 var faceModel=null, videoAnalysisInterval=null;
 var faceHistory={
@@ -798,10 +801,41 @@ function startRecording(){
       }
     }
     
-    // Calculate metrics FIRST (before using them!)
+    // Calculate metrics with SLIDING WINDOW (last 30 seconds)
     var currentWords=lastWordCount;
-    var timeSinceStart=elapsed/60;
-    currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0; // Update global
+    
+    // Update word count history every second (not just when new words arrive)
+    wordCountHistory.push({timestamp:elapsed, count:currentWords});
+    // Keep only last 60 entries
+    if(wordCountHistory.length>60) wordCountHistory.shift();
+    
+    // Calculate WPM based on recent activity (last 15 seconds for faster response)
+    if(wordCountHistory.length>=2 && elapsed>5){
+      // Find word count 15 seconds ago
+      var lookbackTime=Math.max(0,elapsed-15);
+      var oldEntry=null;
+      for(var i=wordCountHistory.length-1;i>=0;i--){
+        if(wordCountHistory[i].timestamp<=lookbackTime){
+          oldEntry=wordCountHistory[i];
+          break;
+        }
+      }
+      
+      if(oldEntry){
+        var wordsInWindow=currentWords-oldEntry.count;
+        var timeInWindow=(elapsed-oldEntry.timestamp)/60; // minutes
+        currentWPM=timeInWindow>0?Math.round(wordsInWindow/timeInWindow):0;
+        console.log('[WPM] Sliding window: '+wordsInWindow+' words in '+Math.round(timeInWindow*60)+'s = '+currentWPM+' WPM');
+      }else{
+        // Fallback to total average
+        var timeSinceStart=elapsed/60;
+        currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
+      }
+    }else{
+      // Not enough data, use total average
+      var timeSinceStart=elapsed/60;
+      currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
+    }
     
     // Update old timer (for compatibility)
     var oldTimer=document.getElementById('timer-val');
