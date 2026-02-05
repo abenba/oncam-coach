@@ -138,8 +138,9 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
       </div>
       <div class="info-box" style="background:#fee2e2;border-right:4px solid:#ef4444;margin-top:12px;">
         <div class="info-box-title">🎤 חשוב: הפעלת מיקרופון</div>
-        <div class="info-box-item" style="font-weight:600;">אחרי שתתחיל הקלטה, אמור "שלום" כדי להפעיל את זיהוי הקול</div>
-        <div class="info-box-item" style="font-size:12px;color:#7f1d1d;">⚠️ זוהי מגבלה של iPhone - המיקרופון מתעורר רק כשמדברים בפעם הראשונה</div>
+        <div class="info-box-item" style="font-weight:600;">אחרי שתתחיל הקלטה, המיקרופון יופעל אוטומטית</div>
+        <div class="info-box-item" style="font-size:12px;color:#7f1d1d;">💡 אם זיהוי הקול לא עובד טוב - נסה לשנות שפה ל-"iw-IL" או English</div>
+        <div class="info-box-item" style="font-size:12px;color:#7f1d1d;">⚠️ זוהי מגבלה של iOS - זיהוי קול בעברית לא מושלם</div>
       </div>
       <div class="err-box" id="err-box"><div class="err-title">⚠️ שגיעה</div><div class="err-msg" id="err-msg"></div></div>
       <button class="btn btn-primary" onclick="startCamera()">בחר אימון ✨</button>
@@ -168,7 +169,11 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         <button class="type-btn" data-type="audition" onclick="selectType(this)"><svg width="28" height="28" fill="none" stroke="#6b7280" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><div class="type-label" style="color:#374151;">אודישן</div></button>
       </div>
       <div class="section-label">שפה:</div>
-      <select id="lang-select"><option value="he-IL">עברית</option><option value="en-US">English</option></select>
+      <select id="lang-select">
+        <option value="he-IL">עברית (he-IL)</option>
+        <option value="iw-IL">עברית (iw-IL - ישן)</option>
+        <option value="en-US">English</option>
+      </select>
     </div>
     <!-- video -->
     <div class="card" style="padding:12px;">
@@ -577,7 +582,6 @@ function startRecording(){
     };
     
     recognizer.onresult=function(ev){
-      console.log('[SPEECH] Hearing...');
       var statusBar=document.getElementById('speech-status-bar');
       var statusText=document.getElementById('speech-status-text');
       if(statusBar) statusBar.style.background='rgba(16,185,129,0.3)';
@@ -586,11 +590,16 @@ function startRecording(){
         statusText.style.color='#10b981';
       }
       
+      // LOG: See what we're getting
+      console.log('[SPEECH] onresult fired. Results count: '+ev.results.length);
+      console.log('[SPEECH] Current transcript length: '+transcript.length+' chars');
+      
       var newText='';
       // collect any NEW finals since lastFinalIndex
       for(var i=lastFinalIndex;i<ev.results.length;i++){
         if(ev.results[i].isFinal){
           var finalText=ev.results[i][0].transcript+' ';
+          console.log('[SPEECH] Final #'+i+': "'+finalText.trim()+'" (confidence: '+ev.results[i][0].confidence+')');
           transcript+=finalText;
           newText+=finalText;
           lastFinalIndex=i+1;
