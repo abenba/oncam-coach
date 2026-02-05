@@ -194,8 +194,14 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
         </div>
       </div>
       
-      <!-- STATS BOX - below video, compact and aesthetic -->
-      <div class="hidden" id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      <!-- DEBUG CONSOLE - on-screen logs for iPhone -->
+      <button onclick="var dc=document.getElementById('debug-console');dc.style.display=dc.style.display==='none'?'block':'none';" style="width:100%;padding:6px;background:#333;color:#0f0;border:none;border-radius:6px;font-size:11px;font-family:monospace;margin-top:8px;">
+        🐛 Debug Console (לחץ להצגה/הסתרה)
+      </button>
+      <div id="debug-console" style="background:#000;color:#0f0;border-radius:8px;padding:8px;margin-top:4px;font-family:monospace;font-size:10px;max-height:120px;overflow-y:auto;display:none;border:1px solid #0f0;"></div>
+      
+      <!-- STATS BOX - below video, compact and aesthetic (visible during recording) -->
+      <div id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:none;">
         <div style="display:flex;justify-content:space-around;align-items:center;margin-bottom:8px;">
           <div style="text-align:center;">
             <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">⏱️ זמן</div>
@@ -248,6 +254,24 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
 <script>
 // ═══ STATE ═══
 var stream=null, mediaRec=null, chunks=[], recognizer=null, timerInterval=null;
+
+// Debug logger for iPhone (shows logs on screen)
+var debugLogs=[];
+function debugLog(msg){
+  var timestamp=new Date().toLocaleTimeString();
+  var logMsg='['+timestamp+'] '+msg;
+  console.log(logMsg); // Also log to real console
+  
+  debugLogs.push(logMsg);
+  if(debugLogs.length>10) debugLogs.shift(); // Keep last 10 logs
+  
+  var debugConsole=document.getElementById('debug-console');
+  if(debugConsole){
+    debugConsole.style.display='block';
+    debugConsole.innerHTML=debugLogs.map(function(l){return '<div>'+l+'</div>';}).join('');
+    debugConsole.scrollTop=debugConsole.scrollHeight; // Auto-scroll to bottom
+  }
+}
 var elapsed=0, transcript="", interimText="", faceData={eye:[],posture:[],expr:[]};
 var recordedBlob=null, currentLang="he-IL", currentType="pitch";
 // Persistent storage with localStorage
@@ -779,6 +803,7 @@ function startRecording(){
     
     // Debug every 5 seconds
     if(elapsed%5===0){
+      debugLog('⏱️ @'+elapsed+'s - Words:'+lastWordCount+' WPM:'+currentWPM);
       console.log('[DEBUG] @'+elapsed+'s - Words:'+lastWordCount+' WPM:'+currentWPM+' Speech:'+(recognizer?'exists':'null'));
       
       // KEEPALIVE: Check if recognizer is still running
@@ -825,6 +850,7 @@ function startRecording(){
         var wordsInWindow=currentWords-oldEntry.count;
         var timeInWindow=(elapsed-oldEntry.timestamp)/60; // minutes
         currentWPM=timeInWindow>0?Math.round(wordsInWindow/timeInWindow):0;
+        debugLog('📊 WPM: '+currentWPM+' ('+wordsInWindow+' words in '+Math.round(timeInWindow*60)+'s)');
         console.log('[WPM] Sliding window: '+wordsInWindow+' words in '+Math.round(timeInWindow*60)+'s = '+currentWPM+' WPM');
       }else{
         // Fallback to total average
@@ -858,14 +884,28 @@ function startRecording(){
       statsBox.classList.remove('hidden'); // Remove hidden class (has !important)
       statsBox.style.display='block'; // Also set style for redundancy
       
-      // Update time and words
-      document.getElementById('stats-time').textContent=fmtTime(elapsed);
-      document.getElementById('stats-words').textContent=currentWords; // Use currentWords, not lastWordCount
+      // Update time and words (with null checks)
+      var statsTimeEl=document.getElementById('stats-time');
+      var statsWordsEl=document.getElementById('stats-words');
+      if(statsTimeEl) statsTimeEl.textContent=fmtTime(elapsed);
+      if(statsWordsEl) statsWordsEl.textContent=currentWords;
+      
+      debugLog('✅ Stats: Time='+fmtTime(elapsed)+' Words='+currentWords+' WPM='+currentWPM);
+      console.log('[STATS] Updating: Time='+fmtTime(elapsed)+' Words='+currentWords+' WPM='+currentWPM);
+      
+      // DEBUG: Force update WPM element directly (bypass any caching)
+      var wpmDebugEl=document.getElementById('stats-wpm');
+      if(wpmDebugEl){
+        console.log('[STATS] WPM Element found! Current text: "'+wpmDebugEl.textContent+'" -> Setting to: '+currentWPM);
+      }else{
+        console.error('[STATS] ERROR: stats-wpm element NOT FOUND!');
+      }
       
       // Update WPM with color coding
       var wpmEl=document.getElementById('stats-wpm');
       if(wpmEl){
         wpmEl.textContent=currentWPM;
+        debugLog('🎯 WPM element updated: '+currentWPM);
         // Color code: green=good (120-180), yellow=needs adjustment, gray=no speech
         if(currentWPM>=120 && currentWPM<=180){
           wpmEl.style.color='#10b981'; // Perfect pace
@@ -1046,10 +1086,10 @@ function startRecording(){
         feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',bg:'rgba(245,158,11,0.85)'};
         console.log('[FEEDBACK] Showing: Too slow - '+currentWPM+' WPM');
       }
-      // Priority 5: Long silence (only after 15 seconds of no new words)
-      else if(silenceStart>15 && currentWords>20){
-        feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',bg:'rgba(239,68,68,0.85)'};
-        console.log('[FEEDBACK] Showing: Long silence ('+silenceStart+'s)');
+      // Priority 5: Long silence (very conservative - only after 25 seconds!)
+      else if(silenceStart>25 && currentWords>30){
+        feedback={text:'🤐 נראה שיש הפסקה - המשך לדבר',bg:'rgba(239,68,68,0.85)'};
+        console.log('[FEEDBACK] Showing: Long silence ('+silenceStart+'s with no new words)');
       }
       // Priority 6: Good performance!
       else if(currentWPM>=120 && currentWPM<=180 && currentWords>30){
