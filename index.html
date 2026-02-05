@@ -250,12 +250,20 @@
             background: #e74c3c;
             color: white;
             border: none;
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
-            font-size: 1.3em;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            font-size: 1.4em;
             cursor: pointer;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delete-btn:active {
+            transform: scale(0.95);
+            background: #c0392b;
         }
         
         .empty-state {
@@ -530,23 +538,43 @@
             }
             const brightness = sum / (data.length * 3 / 4);
             
-            const now = Date.now();
-            const timeSince = (now - lastCheck) / 1000;
-            lastCheck = now;
+            // אתחול ראשון
+            if (!window.lastBrightness) {
+                window.lastBrightness = brightness;
+                window.stableCount = 0;
+                return;
+            }
             
-            // בדיקה פשוטה: אם הבהירות קפואה = יצאת מהמסך
-            if (Math.abs(brightness - (window.lastBrightness || brightness)) < 3) {
-                eyeScore = Math.max(0, eyeScore - 8);
-                indicator.textContent = '❌ חזור למסך!';
-                indicator.className = 'error';
-                showFeedback('נראה שיצאת מהמסך! 👀', 'error');
-            } else if (Math.abs(brightness - (window.lastBrightness || brightness)) < 10) {
-                eyeScore = Math.max(0, eyeScore - 2);
-                indicator.textContent = '⚠️ קשר עין חלש';
-                indicator.className = 'warning';
+            const change = Math.abs(brightness - window.lastBrightness);
+            
+            // אם הבהירות כמעט לא משתנה - מצב חשוד
+            if (change < 1) {
+                window.stableCount = (window.stableCount || 0) + 1;
+                
+                // רק אחרי 3 בדיקות רצופות של "קיפאון" - מתריעים
+                if (window.stableCount >= 3) {
+                    eyeScore = Math.max(0, eyeScore - 5);
+                    indicator.textContent = '⚠️ חזור למסך!';
+                    indicator.className = 'warning';
+                    
+                    // התראה רק אחת לכל 10 שניות
+                    const now = Date.now();
+                    if (!window.lastAlert || now - window.lastAlert > 10000) {
+                        showFeedback('נראה שיצאת מהמסך! 👀', 'warning');
+                        window.lastAlert = now;
+                    }
+                }
+            } else if (change < 8) {
+                // שינוי קטן - קשר עין סביר
+                window.stableCount = 0;
+                eyeScore = Math.min(100, eyeScore + 1);
+                indicator.textContent = '👁️ קשר עין סביר';
+                indicator.className = '';
             } else {
-                eyeScore = Math.min(100, eyeScore + 3);
-                indicator.textContent = '✅ קשר עין טוב';
+                // שינוי משמעותי - קשר עין טוב!
+                window.stableCount = 0;
+                eyeScore = Math.min(100, eyeScore + 2);
+                indicator.textContent = '✅ קשר עין מצוין!';
                 indicator.className = '';
             }
             
@@ -676,18 +704,23 @@
 
         function saveHistory(score, wpm, words, time, eye, trans) {
             let hist = JSON.parse(localStorage.getItem('oncam') || '[]');
-            hist.unshift({
+            const newSession = {
                 id: Date.now(),
                 date: new Date().toLocaleString('he-IL'),
                 score, wpm, words, time, eye, trans
-            });
+            };
+            hist.unshift(newSession);
             if (hist.length > 50) hist = hist.slice(0, 50);
             localStorage.setItem('oncam', JSON.stringify(hist));
+            console.log('[HISTORY] Saved session:', newSession);
+            console.log('[HISTORY] Total sessions:', hist.length);
         }
 
         function loadHistory() {
             const hist = JSON.parse(localStorage.getItem('oncam') || '[]');
             const list = document.getElementById('history-list');
+            
+            console.log('[HISTORY] Found', hist.length, 'sessions');
             
             if (hist.length === 0) {
                 list.innerHTML = '<div class="empty-state"><div style="font-size:3em">📭</div><div>אין אימונים שמורים</div></div>';
@@ -696,8 +729,8 @@
             
             list.innerHTML = hist.map(h => `
                 <div class="history-item">
-                    <button class="delete-btn" onclick="deleteHistory(${h.id})">🗑️</button>
-                    <div class="history-info" onclick="viewHistory(${h.id})">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteHistory(${h.id})">🗑️</button>
+                    <div class="history-info" onclick="viewHistory(${h.id})" style="cursor: pointer;">
                         <div class="history-date">${h.date}</div>
                         <div>${h.wpm} WPM · ${h.words} מילים · ${Math.floor(h.time/60)}:${String(h.time%60).padStart(2,'0')}</div>
                     </div>
@@ -707,6 +740,7 @@
         }
 
         function deleteHistory(id) {
+            event.stopPropagation(); // עצור את הלחיצה מלהתפשט
             if (!confirm('למחוק אימון זה?')) return;
             let hist = JSON.parse(localStorage.getItem('oncam') || '[]');
             hist = hist.filter(h => h.id !== id);
