@@ -253,7 +253,7 @@ var recordedBlob=null, currentLang="he-IL", currentType="pitch";
 // Persistent storage with localStorage
 var sessions=[];
 // Live feedback tracking
-var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0;
+var lastWordCount=0, lastFeedbackTime=0, silenceStart=0, lastTranscriptLength=0, lastSilenceCheckWords=0;
 var recentWPM=[], fillerDetected=0;
 var currentWPM=0; // IMPORTANT: Make this global!
 
@@ -488,7 +488,7 @@ function startRecording(){
   transcript="";interimText="";elapsed=0;
   currentLang=document.getElementById('lang-select').value;
   // Reset live feedback tracking
-  lastWordCount=0;lastFeedbackTime=0;silenceStart=0;lastTranscriptLength=0;
+  lastWordCount=0;lastFeedbackTime=0;silenceStart=0;lastTranscriptLength=0;lastSilenceCheckWords=0;
   recentWPM=[];fillerDetected=0;
 
   // UI
@@ -832,14 +832,20 @@ function startRecording(){
         currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
         console.log('[WPM] Using total average: '+currentWords+' words in '+Math.round(elapsed)+'s = '+currentWPM+' WPM');
       }
-    }else if(elapsed>=5 && currentWords>0){
-      // Use simple average for first 10 seconds
+    }else if(elapsed>=3 && currentWords>0){
+      // Use simple average for early seconds - calculate immediately!
       var timeSinceStart=elapsed/60;
       currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
       console.log('[WPM] Early calc: '+currentWords+' words in '+Math.round(elapsed)+'s = '+currentWPM+' WPM');
     }else{
-      // Not enough time or words yet
-      currentWPM=0;
+      // Not enough time or words yet - but don't keep it at 0 if we have words!
+      if(currentWords>0 && elapsed>0){
+        var timeSinceStart=elapsed/60;
+        currentWPM=timeSinceStart>0?Math.round(currentWords/timeSinceStart):0;
+        console.log('[WPM] Very early: '+currentWords+' words in '+Math.round(elapsed)+'s = '+currentWPM+' WPM');
+      }else{
+        currentWPM=0;
+      }
     }
     
     // Update old timer (for compatibility)
@@ -849,8 +855,8 @@ function startRecording(){
     // Update NEW stats box (merged update for efficiency)
     var statsBox=document.getElementById('stats-box');
     if(statsBox){
-      statsBox.classList.remove('hidden');
-      statsBox.style.display='block'; // Ensure it's visible
+      statsBox.classList.remove('hidden'); // Remove hidden class (has !important)
+      statsBox.style.display='block'; // Also set style for redundancy
       
       // Update time and words
       document.getElementById('stats-time').textContent=fmtTime(elapsed);
@@ -871,12 +877,15 @@ function startRecording(){
       }
     }
     
-    // Detect silence
+    // Detect silence - improved logic based on word count changes
     var currentTranscriptLength=transcript.length;
-    if(currentTranscriptLength===lastTranscriptLength){
+    var wordsAddedRecently=(currentWords>lastSilenceCheckWords);
+    
+    if(!wordsAddedRecently && currentWords>10){
       silenceStart++;
     }else{
       silenceStart=0;
+      lastSilenceCheckWords=currentWords;
     }
     lastTranscriptLength=currentTranscriptLength;
     
@@ -1037,10 +1046,10 @@ function startRecording(){
         feedback={text:'🐢 קצב איטי ('+currentWPM+' מילים/דקה) - הוסף אנרגיה',bg:'rgba(245,158,11,0.85)'};
         console.log('[FEEDBACK] Showing: Too slow - '+currentWPM+' WPM');
       }
-      // Priority 5: Long silence
-      else if(silenceStart>8 && currentWords>20){
+      // Priority 5: Long silence (only after 15 seconds of no new words)
+      else if(silenceStart>15 && currentWords>20){
         feedback={text:'🤐 שתיקה ארוכה - המשך לדבר',bg:'rgba(239,68,68,0.85)'};
-        console.log('[FEEDBACK] Showing: Long silence');
+        console.log('[FEEDBACK] Showing: Long silence ('+silenceStart+'s)');
       }
       // Priority 6: Good performance!
       else if(currentWPM>=120 && currentWPM<=180 && currentWords>30){
