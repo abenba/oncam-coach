@@ -200,8 +200,8 @@ select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:14px;font-
       </button>
       <div id="debug-console" style="background:#000;color:#0f0;border-radius:8px;padding:8px;margin-top:4px;font-family:monospace;font-size:10px;max-height:120px;overflow-y:auto;display:none;border:1px solid #0f0;"></div>
       
-      <!-- STATS BOX - below video, compact and aesthetic (visible during recording) -->
-      <div id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:none;">
+      <!-- STATS BOX - ALWAYS VISIBLE (no hiding!) -->
+      <div id="stats-box" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:12px;padding:12px;margin-top:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
         <div style="display:flex;justify-content:space-around;align-items:center;margin-bottom:8px;">
           <div style="text-align:center;">
             <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">⏱️ זמן</div>
@@ -524,10 +524,11 @@ function startRecording(){
   document.getElementById('timer-card').classList.remove('hidden');
   document.getElementById('live-tx').classList.add('hidden');
   document.getElementById('live-tx-text').textContent='';
-  // Show stats box immediately
+  
+  // Show stats box immediately (it's always visible, just ensure display)
   var statsBox=document.getElementById('stats-box');
   if(statsBox){
-    statsBox.classList.remove('hidden'); // Show immediately!
+    statsBox.style.display='block';
     document.getElementById('stats-time').textContent='00:00';
     document.getElementById('stats-words').textContent='0';
     document.getElementById('stats-wpm').textContent='0';
@@ -881,8 +882,7 @@ function startRecording(){
     // Update NEW stats box (merged update for efficiency)
     var statsBox=document.getElementById('stats-box');
     if(statsBox){
-      statsBox.classList.remove('hidden'); // Remove hidden class (has !important)
-      statsBox.style.display='block'; // Also set style for redundancy
+      // Stats box is always visible - just update the values
       
       // Update time and words (with null checks)
       var statsTimeEl=document.getElementById('stats-time');
@@ -1136,9 +1136,11 @@ function stopRecording(){
   document.getElementById('btn-stop').classList.add('hidden');
   document.getElementById('analyzing-wrap').classList.remove('hidden');
   
-  // Hide stats box
+  // Hide stats box and debug console
   var statsBox=document.getElementById('stats-box');
-  if(statsBox) statsBox.classList.add('hidden');
+  var debugConsole=document.getElementById('debug-console');
+  if(statsBox) statsBox.style.display='none';
+  if(debugConsole) debugConsole.style.display='none';
   
   // Wait for MediaRecorder to finish
   if(mediaRec && mediaRec.state!=='inactive'){
