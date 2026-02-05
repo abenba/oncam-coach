@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>OnCam Coach</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -62,6 +65,7 @@
         <div id="home-page" class="page active">
             <h1>🎤 OnCam Coach</h1>
             <p class="subtitle">אימון נאומים בזמן אמת<br>עם בינה מלאכותית</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.1 • תיקון מלא</p>
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
         </div>
@@ -100,7 +104,8 @@
             </div>
             <div class="transcript-box"><strong>תמלול:</strong><br><span id="result-transcript"></span></div>
             <button class="btn btn-primary" onclick="reRecord()">🔄 אימון נוסף</button>
-            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור</button>
+            <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריה</button>
+            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
         </div>
 
         <div id="history-page" class="page">
@@ -159,12 +164,8 @@
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 1000);
             
-            // קשר עין - כבוי כברירת מחדל (לא יציב)
-            // eyeInterval = setInterval(checkEyeContact, 3000);
-            
-            // הצג מחוון קבוע
-            document.getElementById('eye-contact').textContent = '👁️ קשר עין';
-            document.getElementById('eye-contact').className = '';
+            // קשר עין - חכם ומדויק!
+            eyeInterval = setInterval(checkEyeContact, 2000);
             
             try {
                 mediaRecorder = new MediaRecorder(stream);
@@ -226,12 +227,18 @@
                 
                 if (final) {
                     transcript += final;
-                    wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
-                    console.log('[SPEECH] 💬 Words:', wordCount);
                 }
+                
+                // עדכון מספר מילים מיידי - כולל interim!
+                const tempTranscript = transcript + ' ' + interim;
+                wordCount = tempTranscript.trim().split(/\s+/).filter(w => w.length > 0).length;
+                console.log('[SPEECH] 💬 Words:', wordCount, '(interim included)');
                 
                 const display = transcript + (interim ? '<i style="color:#999;opacity:0.7">' + interim + '</i>' : '');
                 document.getElementById('transcript-text').innerHTML = display || 'מקליט...';
+                
+                // עדכון מיידי של התצוגה
+                document.getElementById('stats-words').textContent = wordCount;
             };
             
             recognition.onerror = (e) => {
@@ -253,8 +260,101 @@
         }
 
         function checkEyeContact() {
-            // זיהוי קשר עין - מושבת כי לא יציב
-            // ניתן להפעיל אם רוצה אבל יש false positives
+            const video = document.getElementById('video');
+            const indicator = document.getElementById('eye-contact');
+            
+            if (!video.videoWidth) return;
+            
+            // צילום פריים קטן (מהיר יותר)
+            const canvas = document.createElement('canvas');
+            canvas.width = 80;
+            canvas.height = 60;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            
+            // חישוב בהירות ממוצעת
+            let sum = 0, pixels = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                sum += (data[i] + data[i+1] + data[i+2]) / 3;
+                pixels++;
+            }
+            const avgBrightness = sum / pixels;
+            
+            // חישוב שונות (variance) - מודד כמה שינוי יש בתמונה
+            let variance = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const pixelBright = (data[i] + data[i+1] + data[i+2]) / 3;
+                variance += Math.pow(pixelBright - avgBrightness, 2);
+            }
+            variance = variance / pixels;
+            
+            // אתחול
+            if (!window.eyeData) {
+                window.eyeData = {
+                    lastBrightness: avgBrightness,
+                    lastVariance: variance,
+                    frozenCount: 0,
+                    movementHistory: [],
+                    lastAlert: 0
+                };
+                indicator.textContent = '👁️ מתחיל...';
+                indicator.className = '';
+                return;
+            }
+            
+            // חישוב שינוי
+            const brightChange = Math.abs(avgBrightness - window.eyeData.lastBrightness);
+            const varChange = Math.abs(variance - window.eyeData.lastVariance);
+            const totalMovement = brightChange + (varChange / 100);
+            
+            // שמירת היסטוריה
+            window.eyeData.movementHistory.push(totalMovement);
+            if (window.eyeData.movementHistory.length > 5) {
+                window.eyeData.movementHistory.shift();
+            }
+            
+            // ממוצע תנועה אחרון
+            const avgMovement = window.eyeData.movementHistory.reduce((a,b) => a+b, 0) / window.eyeData.movementHistory.length;
+            
+            console.log(`[EYE] 👁️ Movement: ${totalMovement.toFixed(1)}, Avg: ${avgMovement.toFixed(1)}, Frozen: ${window.eyeData.frozenCount}`);
+            
+            // לוגיקת זיהוי
+            if (avgMovement < 2) {
+                // תנועה מינימלית - חשוד
+                window.eyeData.frozenCount++;
+                
+                if (window.eyeData.frozenCount >= 3) {
+                    // 3 בדיקות רצופות (6 שניות) של קיפאון
+                    eyeScore = Math.max(0, eyeScore - 10);
+                    indicator.textContent = '❌ חזור למסך!';
+                    indicator.className = 'error';
+                    
+                    // התראה רק אחת ל-15 שניות
+                    const now = Date.now();
+                    if (now - window.eyeData.lastAlert > 15000) {
+                        showFeedback('נראה שיצאת מהמסך! 👀', 'error');
+                        window.eyeData.lastAlert = now;
+                    }
+                }
+            } else if (avgMovement < 5) {
+                // תנועה קטנה - קשר עין חלש
+                window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
+                eyeScore = Math.max(0, eyeScore - 2);
+                indicator.textContent = '⚠️ קשר עין חלש';
+                indicator.className = 'warning';
+            } else {
+                // תנועה תקינה - קשר עין טוב!
+                window.eyeData.frozenCount = 0;
+                eyeScore = Math.min(100, eyeScore + 3);
+                indicator.textContent = '✅ קשר עין מצוין!';
+                indicator.className = '';
+            }
+            
+            window.eyeData.lastBrightness = avgBrightness;
+            window.eyeData.lastVariance = variance;
+            eyeHistory.push(eyeScore);
         }
 
         function updateTimer() {
