@@ -199,6 +199,7 @@
         let startTime, transcript = '', wordCount = 0, currentWPM = 0;
         let wordCountHistory = [];
         let eyeScore = 100, eyeHistory = [];
+        let brightnessHistory = [];  // שמירת כל נתוני הבהירות!
         let lastWords = 0, silenceCount = 0;
 
         function goToCamera() { 
@@ -246,7 +247,8 @@
             
             console.log('[RECORDING] ▶️ Starting...');
             transcript = ''; wordCount = 0; wordCountHistory = []; currentWPM = 0;
-            eyeScore = 100; eyeHistory = []; lastWords = 0; silenceCount = 0;
+            eyeScore = 100; eyeHistory = []; brightnessHistory = [];
+            lastWords = 0; silenceCount = 0;
             
             // הסתר טיפים
             document.getElementById('tips-box').style.display = 'none';
@@ -419,6 +421,9 @@
                 window.eyeData.brightnessHistory.shift();
             }
             
+            // שמירה גלובלית לסיכום!
+            brightnessHistory.push(avgBrightness);
+            
             // חישוב ממוצע בהירות
             const avgHistBrightness = window.eyeData.brightnessHistory.reduce((a,b) => a+b, 0) / window.eyeData.brightnessHistory.length;
             
@@ -480,18 +485,32 @@
                 }
             }
             else if (movement < 1.5) {
-                // תנועה קטנה
+                // תנועה קטנה - אבל אל תשפר את הציון אם האור בינוני!
                 window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
-                eyeScore = Math.min(100, eyeScore + 1);
-                indicator.textContent = '👁️ קשר עין';
-                indicator.className = '';
+                
+                if (avgHistBrightness >= 95) {
+                    eyeScore = Math.min(100, eyeScore + 1);
+                    indicator.textContent = '✅ מצוין!';
+                    indicator.className = '';
+                } else {
+                    // אור בינוני - שמור על הציון, אל תשפר
+                    indicator.textContent = '👁️ אור סביר';
+                    indicator.className = 'warning';
+                }
             }
             else {
-                // תנועה טובה + אור טוב = מצוין!
+                // תנועה טובה - אבל רק אם יש אור טוב תגיד "מצוין"
                 window.eyeData.frozenCount = 0;
-                eyeScore = Math.min(100, eyeScore + 2);
-                indicator.textContent = '✅ מצוין!';
-                indicator.className = '';
+                
+                if (avgHistBrightness >= 95) {
+                    eyeScore = Math.min(100, eyeScore + 2);
+                    indicator.textContent = '✅ מצוין!';
+                    indicator.className = '';
+                } else {
+                    eyeScore = Math.min(100, eyeScore + 1);
+                    indicator.textContent = '👁️ אור סביר';
+                    indicator.className = 'warning';
+                }
             }
             
             window.eyeData.lastBrightness = avgBrightness;
@@ -591,6 +610,13 @@
             const avgEye = eyeHistory.length > 0 ? Math.round(eyeHistory.reduce((a,b)=>a+b,0) / eyeHistory.length) : 100;
             const eyeLabel = avgEye >= 80 ? 'מצוין ✨' : avgEye >= 60 ? 'טוב 👍' : avgEye >= 40 ? 'בסדר 👌' : 'לא זמין';
             
+            // חישוב ממוצע בהירות לכל ההקלטה
+            const avgBrightness = brightnessHistory.length > 0 
+                ? Math.round(brightnessHistory.reduce((a,b)=>a+b,0) / brightnessHistory.length)
+                : 100;
+            
+            console.log(`[RESULTS] 💡 Average Brightness: ${avgBrightness}, Eye Score: ${avgEye}`);
+            
             document.getElementById('final-score').textContent = score;
             document.getElementById('result-wpm').textContent = wpm;
             document.getElementById('result-words').textContent = wordCount;
@@ -598,8 +624,8 @@
             document.getElementById('result-eye').textContent = eyeLabel;
             document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
             
-            // יצירת סיכום מילולי
-            let summary = generateSummary(wpm, wordCount, elapsed, avgEye);
+            // יצירת סיכום מילולי עם ממוצע האור האמיתי!
+            let summary = generateSummary(wpm, wordCount, elapsed, avgEye, avgBrightness);
             document.getElementById('summary-text').textContent = summary;
             
             saveHistory(score, wpm, wordCount, elapsed, eyeLabel, transcript);
@@ -608,7 +634,7 @@
             console.log(`[RESULTS] 🏆 Score: ${score} | 🎯 ${wpm} WPM | 💬 ${wordCount} words | ⏱️ ${elapsed}s`);
         }
         
-        function generateSummary(wpm, words, time, eyeScore) {
+        function generateSummary(wpm, words, time, eyeScore, avgBrightness) {
             let parts = [];
             
             // קצב דיבור
@@ -622,15 +648,24 @@
                 parts.push('קצב הדיבור היה סביר');
             }
             
-            // תאורה וקשר עין - בדיקה מדויקת!
-            if (eyeScore < 50) {
-                parts.push('התאורה הייתה חלשה מאד או שנעת מהמסך');
-            } else if (eyeScore < 70) {
+            // תאורה - לפי ממוצע הבהירות האמיתי!
+            console.log(`[SUMMARY] 💡 Using avgBrightness: ${avgBrightness}, eyeScore: ${eyeScore}`);
+            
+            if (avgBrightness < 45) {
+                parts.push('התאורה הייתה חלשה מאד');
+            } else if (avgBrightness < 70) {
                 parts.push('התאורה הייתה חלשה - כדאי לשפר');
-            } else if (eyeScore >= 85) {
-                parts.push('תאורה מצוינת וקשר עין טוב');
+            } else if (avgBrightness < 95) {
+                parts.push('תאורה סבירה - אפשר לשפר');
             } else {
-                parts.push('תאורה סבירה');
+                parts.push('תאורה מצוינת');
+            }
+            
+            // קשר עין - בדיקה נפרדת
+            if (eyeScore < 60) {
+                parts.push('היו רגעים שנעת מהמסך');
+            } else if (eyeScore >= 80) {
+                parts.push('קשר עין טוב');
             }
             
             // אורך ושטף
