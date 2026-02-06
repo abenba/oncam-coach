@@ -432,7 +432,7 @@
             // *** לוגיקה מכוילת מחדש - סף נמוך יותר ***
             
             // רמת 1: בדיקת אור (קריטי!)
-            if (avgHistBrightness < 35) {
+            if (avgHistBrightness < 45) {
                 // אור מאד חלש - אדום
                 eyeScore = Math.max(0, eyeScore - 10);
                 indicator.textContent = '🌑 אור חלש מאד';
@@ -444,7 +444,7 @@
                     window.eyeData.lastAlert = now;
                 }
             }
-            else if (avgHistBrightness < 55) {
+            else if (avgHistBrightness < 70) {
                 // אור חלש - כתום
                 eyeScore = Math.max(0, eyeScore - 5);
                 indicator.textContent = '💡 אור חלש';
@@ -456,7 +456,7 @@
                     window.eyeData.lastAlert = now;
                 }
             }
-            else if (avgHistBrightness < 80) {
+            else if (avgHistBrightness < 95) {
                 // אור בינוני - צהוב
                 eyeScore = Math.min(100, eyeScore + 1);
                 indicator.textContent = '👁️ אור סביר';
@@ -622,11 +622,15 @@
                 parts.push('קצב הדיבור היה סביר');
             }
             
-            // תאורה וקשר עין
-            if (eyeScore < 60) {
-                parts.push('התאורה הייתה חלשה או שנעה מהמסך');
-            } else if (eyeScore >= 80) {
+            // תאורה וקשר עין - בדיקה מדויקת!
+            if (eyeScore < 50) {
+                parts.push('התאורה הייתה חלשה מאד או שנעת מהמסך');
+            } else if (eyeScore < 70) {
+                parts.push('התאורה הייתה חלשה - כדאי לשפר');
+            } else if (eyeScore >= 85) {
                 parts.push('תאורה מצוינת וקשר עין טוב');
+            } else {
+                parts.push('תאורה סבירה');
             }
             
             // אורך ושטף
