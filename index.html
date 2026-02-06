@@ -63,6 +63,25 @@
         .result-card { background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; }
         .result-value { font-size: 2.2em; font-weight: 700; color: #667eea; margin: 8px 0; }
         .result-label { color: #666; font-size: 0.9em; }
+        .summary-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .summary-title {
+            color: #667eea;
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .summary-text {
+            color: #555;
+            font-size: 1em;
+            line-height: 1.7;
+        }
         #overall-score { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 20px 0; }
         #overall-score .score { font-size: 3.5em; font-weight: 800; }
         .history-item { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 12px; padding: 15px; margin: 10px 0; display: flex; align-items: center; gap: 12px; }
@@ -156,7 +175,13 @@
                 <div class="result-card"><div class="result-label">זמן</div><div class="result-value" id="result-time">0:00</div></div>
                 <div class="result-card"><div class="result-label">קשר עין</div><div class="result-value" id="result-eye" style="font-size: 1.5em;">-</div></div>
             </div>
-            <div class="transcript-box"><strong>תמלול:</strong><br><span id="result-transcript"></span></div>
+            
+            <div class="summary-box">
+                <div class="summary-title">💬 סיכום האימון</div>
+                <div class="summary-text" id="summary-text"></div>
+            </div>
+            
+            <div class="transcript-box" style="max-height: 200px;"><strong>תמלול מלא:</strong><br><span id="result-transcript"></span></div>
             <button class="btn btn-primary" onclick="reRecord()">🔄 אימון נוסף</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריה</button>
             <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
@@ -379,7 +404,9 @@
                     lastBrightness: avgBrightness,
                     lastVariance: variance,
                     frozenCount: 0,
+                    darkCount: 0,
                     movementHistory: [],
+                    brightnessHistory: [],
                     lastAlert: 0
                 };
                 indicator.textContent = '👁️ קשר עין';
@@ -388,53 +415,75 @@
                 return;
             }
             
-            // חישוב שינוי - רגיש יותר לשינויים קטנים באור
+            // שמירת היסטוריית בהירות
+            window.eyeData.brightnessHistory.push(avgBrightness);
+            if (window.eyeData.brightnessHistory.length > 5) {
+                window.eyeData.brightnessHistory.shift();
+            }
+            const avgHistBrightness = window.eyeData.brightnessHistory.reduce((a,b) => a+b, 0) / window.eyeData.brightnessHistory.length;
+            
+            // זיהוי אור חלש
+            const isDark = avgHistBrightness < 60;  // סף לאור חלש
+            
+            // חישוב שינוי תנועה
             const brightChange = Math.abs(avgBrightness - window.eyeData.lastBrightness);
             const varChange = Math.abs(variance - window.eyeData.lastVariance);
-            const totalMovement = (brightChange * 1.5) + (varChange / 50);  // רגישות מוגברת
+            const totalMovement = brightChange + (varChange / 80);
             
             // שמירת היסטוריה
             window.eyeData.movementHistory.push(totalMovement);
-            if (window.eyeData.movementHistory.length > 3) {  // חלון קטן יותר
+            if (window.eyeData.movementHistory.length > 4) {
                 window.eyeData.movementHistory.shift();
             }
             
-            // ממוצע תנועה אחרון
+            // ממוצע תנועה
             const avgMovement = window.eyeData.movementHistory.reduce((a,b) => a+b, 0) / window.eyeData.movementHistory.length;
             
-            console.log(`[EYE] 👁️ Movement: ${totalMovement.toFixed(1)}, Avg: ${avgMovement.toFixed(1)}, Bright: ${avgBrightness.toFixed(0)}`);
+            console.log(`[EYE] 👁️ Movement: ${totalMovement.toFixed(1)}, Avg: ${avgMovement.toFixed(1)}, Bright: ${avgBrightness.toFixed(0)}, Dark: ${isDark}`);
             
-            // לוגיקת זיהוי - רגישה יותר
-            if (avgMovement < 1.5) {  // סף נמוך יותר
-                // תנועה מינימלית - חשוד
+            // לוגיקת זיהוי
+            if (isDark) {
+                // אור חלש
+                window.eyeData.darkCount++;
+                if (window.eyeData.darkCount >= 2) {
+                    eyeScore = Math.max(0, eyeScore - 5);
+                    indicator.textContent = '💡 אור חלש';
+                    indicator.className = 'warning';
+                    
+                    const now = Date.now();
+                    if (now - window.eyeData.lastAlert > 20000) {
+                        showFeedback('התאורה חלשה - נסה להוסיף אור 💡', 'warning');
+                        window.eyeData.lastAlert = now;
+                    }
+                }
+            } else if (avgMovement < 1.2) {
+                // תנועה מינימלית בתנאי אור טוב
                 window.eyeData.frozenCount++;
+                window.eyeData.darkCount = 0;
                 
-                if (window.eyeData.frozenCount >= 3) {
-                    // 3 בדיקות רצופות (6 שניות) של קיפאון
-                    eyeScore = Math.max(0, eyeScore - 10);
+                if (window.eyeData.frozenCount >= 4) {
+                    eyeScore = Math.max(0, eyeScore - 8);
                     indicator.textContent = '❌ חזור למסך!';
                     indicator.className = 'error';
                     
-                    // התראה רק אחת ל-12 שניות
                     const now = Date.now();
-                    if (now - window.eyeData.lastAlert > 12000) {
+                    if (now - window.eyeData.lastAlert > 15000) {
                         showFeedback('נראה שיצאת מהמסך! 👀', 'error');
                         window.eyeData.lastAlert = now;
                     }
-                } else {
-                    indicator.textContent = '⚠️ תנועה מועטה';
-                    indicator.className = 'warning';
                 }
-            } else if (avgMovement < 3.5) {  // סף בינוני
-                // תנועה קטנה - עדיין סביר
+            } else if (avgMovement < 2.5) {
+                // תנועה קטנה
                 window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
+                window.eyeData.darkCount = Math.max(0, window.eyeData.darkCount - 1);
                 eyeScore = Math.min(100, eyeScore + 1);
-                indicator.textContent = '👁️ קשר עין סביר';
+                indicator.textContent = '👁️ קשר עין';
                 indicator.className = 'warning';
             } else {
-                // תנועה תקינה - קשר עין טוב!
+                // תנועה טובה
                 window.eyeData.frozenCount = 0;
-                eyeScore = Math.min(100, eyeScore + 3);
+                window.eyeData.darkCount = 0;
+                eyeScore = Math.min(100, eyeScore + 2);
                 indicator.textContent = '✅ קשר עין מצוין!';
                 indicator.className = '';
             }
@@ -543,10 +592,54 @@
             document.getElementById('result-eye').textContent = eyeLabel;
             document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
             
+            // יצירת סיכום מילולי
+            let summary = generateSummary(wpm, wordCount, elapsed, avgEye);
+            document.getElementById('summary-text').textContent = summary;
+            
             saveHistory(score, wpm, wordCount, elapsed, eyeLabel, transcript);
             show('results-page');
             
             console.log(`[RESULTS] 🏆 Score: ${score} | 🎯 ${wpm} WPM | 💬 ${wordCount} words | ⏱️ ${elapsed}s`);
+        }
+        
+        function generateSummary(wpm, words, time, eyeScore) {
+            let parts = [];
+            
+            // קצב דיבור
+            if (wpm >= 120 && wpm <= 180) {
+                parts.push('דיברת בקצב מצוין ונעים');
+            } else if (wpm > 180) {
+                parts.push('דיברת מהר מדי - כדאי להאט קצת');
+            } else if (wpm < 100 && wpm > 0) {
+                parts.push('דיברת לאט - נסה להאיץ מעט');
+            } else if (wpm >= 100) {
+                parts.push('קצב הדיבור היה סביר');
+            }
+            
+            // תאורה וקשר עין
+            if (eyeScore < 60) {
+                parts.push('התאורה הייתה חלשה או שנעה מהמסך');
+            } else if (eyeScore >= 80) {
+                parts.push('תאורה מצוינת וקשר עין טוב');
+            }
+            
+            // אורך ושטף
+            if (words < 20) {
+                parts.push('נסה לדבר יותר בפעם הבאה');
+            } else if (words >= 100) {
+                parts.push('אורך מצוין - נשמע שטוף ורציף');
+            } else if (time < 30) {
+                parts.push('אימון קצר - נסה לדבר יותר זמן');
+            }
+            
+            // שכנוע ואנרגיה
+            if (wpm > 150 && words > 50) {
+                parts.push('נשמע שיש אנרגיה');
+            } else if (wpm < 110) {
+                parts.push('נסה להכניס יותר אנרגיה ושכנוע');
+            }
+            
+            return parts.join(', ') + '.';
         }
 
         function saveHistory(score, wpm, words, time, eye, trans) {
