@@ -209,8 +209,21 @@
             document.getElementById('tips-box').style.display = 'block';
         }
         function goHome() {
-            stopRecording();
+            // נקה הכל בלי להראות תוצאות
+            clearInterval(timerInterval);
+            clearInterval(eyeInterval);
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            if (recognition) { recognition.stop(); recognition = null; }
             if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+            
+            // איפוס משתנים
+            transcript = ''; 
+            wordCount = 0; 
+            eyeScore = 100; 
+            eyeHistory = []; 
+            brightnessHistory = [];
+            
             show('home-page');
         }
         function goToHistory() { show('history-page'); loadHistory(); }
@@ -591,6 +604,13 @@
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
             const mins = elapsed / 60;
             const wpm = mins > 0 ? Math.round(wordCount / mins) : 0;
+            
+            // וידוא שהערכים תקינים
+            if (!elapsed || elapsed <= 0 || !wordCount) {
+                console.error('[RESULTS] ❌ Invalid data - not showing results');
+                show('camera-page');
+                return;
+            }
             
             let score = 0;
             if (wpm >= 120 && wpm <= 180) score += 50;
