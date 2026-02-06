@@ -413,9 +413,9 @@
                 return;
             }
             
-            // שמירת היסטוריית בהירות (5 דגימות אחרונות)
+            // שמירת היסטוריית בהירות (3 דגימות - מגיב מהר יותר)
             window.eyeData.brightnessHistory.push(avgBrightness);
-            if (window.eyeData.brightnessHistory.length > 5) {
+            if (window.eyeData.brightnessHistory.length > 3) {
                 window.eyeData.brightnessHistory.shift();
             }
             
@@ -429,32 +429,38 @@
             
             console.log(`[EYE] 💡 Bright: ${avgBrightness.toFixed(0)} (avg: ${avgHistBrightness.toFixed(0)}), Movement: ${movement.toFixed(1)}, Var: ${variance.toFixed(0)}`);
             
-            // *** הלוגיקה החדשה - בדיקת רמת אור קודם כל! ***
+            // *** לוגיקה מכוילת מחדש - סף נמוך יותר ***
             
-            // רמת 1: בדיקת אור (הכי חשוב!)
-            if (avgHistBrightness < 50) {
+            // רמת 1: בדיקת אור (קריטי!)
+            if (avgHistBrightness < 35) {
                 // אור מאד חלש - אדום
-                eyeScore = Math.max(0, eyeScore - 8);
-                indicator.textContent = '💡 אור חלש מאד';
+                eyeScore = Math.max(0, eyeScore - 10);
+                indicator.textContent = '🌑 אור חלש מאד';
                 indicator.className = 'error';
                 
                 const now = Date.now();
-                if (now - window.eyeData.lastAlert > 15000) {
+                if (now - window.eyeData.lastAlert > 12000) {
                     showFeedback('התאורה חלשה מדי - הוסף אור! 💡', 'error');
                     window.eyeData.lastAlert = now;
                 }
             }
-            else if (avgHistBrightness < 70) {
+            else if (avgHistBrightness < 55) {
                 // אור חלש - כתום
-                eyeScore = Math.max(0, eyeScore - 3);
-                indicator.textContent = '⚠️ אור חלש';
+                eyeScore = Math.max(0, eyeScore - 5);
+                indicator.textContent = '💡 אור חלש';
                 indicator.className = 'warning';
                 
                 const now = Date.now();
-                if (now - window.eyeData.lastAlert > 20000) {
+                if (now - window.eyeData.lastAlert > 18000) {
                     showFeedback('כדאי להוסיף אור 💡', 'warning');
                     window.eyeData.lastAlert = now;
                 }
+            }
+            else if (avgHistBrightness < 80) {
+                // אור בינוני - צהוב
+                eyeScore = Math.min(100, eyeScore + 1);
+                indicator.textContent = '👁️ אור סביר';
+                indicator.className = 'warning';
             }
             // רמת 2: בדיקת תנועה (רק אם יש אור מספיק)
             else if (movement < 0.8 && variance < 200) {
