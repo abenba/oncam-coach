@@ -434,10 +434,10 @@
             
             console.log(`[EYE] 💡 Bright: ${avgBrightness.toFixed(0)} (avg: ${avgHistBrightness.toFixed(0)}), Movement: ${movement.toFixed(1)}, Var: ${variance.toFixed(0)}`);
             
-            // *** לוגיקה מכוילת מחדש - סף נמוך יותר ***
+            // *** לוגיקה מכוילת - רגישות גבוהה ***
             
             // רמת 1: בדיקת אור (קריטי!)
-            if (avgHistBrightness < 45) {
+            if (avgHistBrightness < 50) {
                 // אור מאד חלש - אדום
                 eyeScore = Math.max(0, eyeScore - 10);
                 indicator.textContent = '🌑 אור חלש מאד';
@@ -449,7 +449,7 @@
                     window.eyeData.lastAlert = now;
                 }
             }
-            else if (avgHistBrightness < 70) {
+            else if (avgHistBrightness < 80) {
                 // אור חלש - כתום
                 eyeScore = Math.max(0, eyeScore - 5);
                 indicator.textContent = '💡 אור חלש';
@@ -461,10 +461,10 @@
                     window.eyeData.lastAlert = now;
                 }
             }
-            else if (avgHistBrightness < 95) {
+            else if (avgHistBrightness < 110) {
                 // אור בינוני - צהוב
                 eyeScore = Math.min(100, eyeScore + 1);
-                indicator.textContent = '👁️ אור סביר';
+                indicator.textContent = '⚠️ אור בינוני';
                 indicator.className = 'warning';
             }
             // רמת 2: בדיקת תנועה (רק אם יש אור מספיק)
@@ -488,13 +488,13 @@
                 // תנועה קטנה - אבל אל תשפר את הציון אם האור בינוני!
                 window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
                 
-                if (avgHistBrightness >= 95) {
+                if (avgHistBrightness >= 110) {
                     eyeScore = Math.min(100, eyeScore + 1);
                     indicator.textContent = '✅ מצוין!';
                     indicator.className = '';
                 } else {
                     // אור בינוני - שמור על הציון, אל תשפר
-                    indicator.textContent = '👁️ אור סביר';
+                    indicator.textContent = '⚠️ אור בינוני';
                     indicator.className = 'warning';
                 }
             }
@@ -502,13 +502,13 @@
                 // תנועה טובה - אבל רק אם יש אור טוב תגיד "מצוין"
                 window.eyeData.frozenCount = 0;
                 
-                if (avgHistBrightness >= 95) {
+                if (avgHistBrightness >= 110) {
                     eyeScore = Math.min(100, eyeScore + 2);
                     indicator.textContent = '✅ מצוין!';
                     indicator.className = '';
                 } else {
                     eyeScore = Math.min(100, eyeScore + 1);
-                    indicator.textContent = '👁️ אור סביר';
+                    indicator.textContent = '⚠️ אור בינוני';
                     indicator.className = 'warning';
                 }
             }
@@ -651,12 +651,12 @@
             // תאורה - לפי ממוצע הבהירות האמיתי!
             console.log(`[SUMMARY] 💡 Using avgBrightness: ${avgBrightness}, eyeScore: ${eyeScore}`);
             
-            if (avgBrightness < 45) {
+            if (avgBrightness < 50) {
                 parts.push('התאורה הייתה חלשה מאד');
-            } else if (avgBrightness < 70) {
+            } else if (avgBrightness < 80) {
                 parts.push('התאורה הייתה חלשה - כדאי לשפר');
-            } else if (avgBrightness < 95) {
-                parts.push('תאורה סבירה - אפשר לשפר');
+            } else if (avgBrightness < 110) {
+                parts.push('תאורה בינונית - כדאי לשפר');
             } else {
                 parts.push('תאורה מצוינת');
             }
