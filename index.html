@@ -568,6 +568,37 @@
             
             console.log(`[EYE] 💡 Bright: ${avgBrightness.toFixed(0)} (avg: ${avgHistBrightness.toFixed(0)}), Movement: ${movement.toFixed(1)}, Var: ${variance.toFixed(0)}`);
             
+            // *** זיהוי יציאה מהפריים - שינוי דרמטי בבהירות ***
+            const brightChange2 = window.eyeData.lastBrightness - avgBrightness;  // שינוי (+ או -)
+            const isLeavingFrame = 
+                Math.abs(brightChange2) > 30  // שינוי דרמטי (עלייה או ירידה)
+                || 
+                (avgHistBrightness < 40 && movement > 5);  // אפלה + תנועה
+            
+            if (isLeavingFrame) {
+                window.eyeData.frozenCount++;
+                console.log(`[EYE] ⚠️ LEAVING FRAME! Change: ${brightChange2.toFixed(1)}, frozenCount: ${window.eyeData.frozenCount}`);
+                
+                if (window.eyeData.frozenCount >= 2) {
+                    eyeScore = Math.max(0, eyeScore - 15);
+                    indicator.textContent = '❌ חזור למסך!';
+                    indicator.className = 'error';
+                    
+                    const now = Date.now();
+                    if (now - window.eyeData.lastAlert > 10000) {
+                        showFeedback('הפנים יצאו מהמסך! 👀', 'error');
+                        window.eyeData.lastAlert = now;
+                    }
+                    window.eyeData.lastBrightness = avgBrightness;
+                    window.eyeData.lastVariance = variance;
+                    eyeHistory.push(eyeScore);
+                    return;
+                }
+            } else {
+                // איפוס מונה אם חזר למסך
+                window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
+            }
+            
             // *** לוגיקה מכוילת - רגישות גבוהה ***
             
             // רמת 1: בדיקת אור (קריטי!)
@@ -602,25 +633,8 @@
                 indicator.className = 'warning';
             }
             // רמת 2: בדיקת תנועה (רק אם יש אור מספיק)
-            else if (movement < 0.8 && variance < 200) {
-                // קיפאון מוחלט - יצא מהמסך
-                window.eyeData.frozenCount++;
-                
-                if (window.eyeData.frozenCount >= 4) {
-                    eyeScore = Math.max(0, eyeScore - 10);
-                    indicator.textContent = '❌ חזור למסך!';
-                    indicator.className = 'error';
-                    
-                    const now = Date.now();
-                    if (now - window.eyeData.lastAlert > 12000) {
-                        showFeedback('נראה שיצאת מהמסך! 👀', 'error');
-                        window.eyeData.lastAlert = now;
-                    }
-                }
-            }
             else if (movement < 1.5) {
                 // תנועה קטנה - אבל אל תשפר את הציון אם האור בינוני!
-                window.eyeData.frozenCount = Math.max(0, window.eyeData.frozenCount - 1);
                 
                 if (avgHistBrightness >= 110) {
                     eyeScore = Math.min(100, eyeScore + 1);
@@ -634,7 +648,6 @@
             }
             else {
                 // תנועה טובה - אבל רק אם יש אור טוב תגיד "מצוין"
-                window.eyeData.frozenCount = 0;
                 
                 if (avgHistBrightness >= 110) {
                     eyeScore = Math.min(100, eyeScore + 2);
