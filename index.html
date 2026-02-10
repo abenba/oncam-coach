@@ -131,8 +131,8 @@
                 <div class="subtitle-answer">אני כאן בשבילך.</div>
             </div>
             <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.3 • שמירת וידאו + דוחות</p>
-            <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
-            <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
+            <button id="start-training-btn" class="btn btn-primary">🚀 התחל אימון חדש</button>
+            <button id="history-btn" class="btn btn-secondary">📊 היסטוריית אימונים</button>
         </div>
 
         <div id="camera-page" class="page">
@@ -309,20 +309,11 @@
         }
 
         function goToCamera() {
-            alert('הכפתור נלחץ!'); // בדיקה
             console.log('[APP] 🚀 goToCamera() called');
-            try {
-                show('camera-page');
-                console.log('[APP] ✅ Switched to camera page');
-                setupCamera();
-                console.log('[APP] ✅ setupCamera() called');
-                // הצג טיפים
-                document.getElementById('tips-box').style.display = 'block';
-                console.log('[APP] ✅ Tips displayed');
-            } catch (err) {
-                console.error('[APP] ❌ Error in goToCamera:', err);
-                alert('שגיאה: ' + err.message);
-            }
+            show('camera-page'); 
+            setupCamera();
+            // הצג טיפים
+            document.getElementById('tips-box').style.display = 'block';
         }
         function goHome() {
             // נקה הכל בלי להראות תוצאות
@@ -1191,6 +1182,30 @@
 
         // טעינה אוטומטית - בדיקת DB
         console.log('[APP] 🚀 OnCam Coach loaded');
+        
+        // הוספת event listeners אמינים
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[APP] ✅ DOM loaded');
+            
+            const startBtn = document.getElementById('start-training-btn');
+            const historyBtn = document.getElementById('history-btn');
+            
+            if (startBtn) {
+                startBtn.addEventListener('click', function() {
+                    console.log('[APP] 🎯 Start button clicked');
+                    goToCamera();
+                });
+                console.log('[APP] ✅ Start button listener added');
+            }
+            
+            if (historyBtn) {
+                historyBtn.addEventListener('click', function() {
+                    console.log('[APP] 📊 History button clicked');
+                    goToHistory();
+                });
+                console.log('[APP] ✅ History button listener added');
+            }
+        });
     </script>
 </body>
 </html>
