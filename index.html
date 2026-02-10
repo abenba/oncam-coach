@@ -93,8 +93,19 @@
         <!-- עמוד מצלמה -->
         <div id="camera" class="page">
             <h1>🎬 הקלטה</h1>
-            <video id="video" autoplay muted></video>
-            <button class="btn btn-primary" onclick="goHome()">
+            
+            <div style="position: relative;">
+                <video id="video" autoplay muted></video>
+                <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
+            </div>
+            
+            <button id="start-btn" class="btn btn-primary" onclick="startRecording()">
+                ⏺️ התחל הקלטה
+            </button>
+            <button id="stop-btn" class="btn btn-secondary" onclick="stopRecording()" style="display: none;">
+                ⏹️ עצור הקלטה
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
                 🏠 חזור לבית
             </button>
         </div>
@@ -112,6 +123,9 @@
     </div>
 
     <script>
+        let startTime = null;
+        let timerInterval = null;
+        
         function show(pageId) {
             // הסתר את כל הדפים
             const pages = document.querySelectorAll('.page');
@@ -123,6 +137,12 @@
         
         function goHome() {
             console.log('[APP] Going home');
+            
+            // עצור הקלטה אם רצה
+            if (startTime) {
+                stopRecording();
+            }
+            
             show('home');
         }
         
@@ -149,6 +169,55 @@
         function goToHistory() {
             console.log('[APP] Going to history');
             show('history');
+        }
+        
+        function startRecording() {
+            console.log('[RECORDING] Starting...');
+            
+            startTime = Date.now();
+            
+            // החלף כפתורים
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            
+            // התחל טיימר
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // הודעה לצ'ק
+            console.log('[RECORDING] ✅ Started successfully');
+        }
+        
+        function stopRecording() {
+            console.log('[RECORDING] Stopping...');
+            
+            // עצור טיימר
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+            startTime = null;
+            
+            // החלף כפתורים
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+            
+            // הצג תוצאה פשוטה
+            alert(`הקלטה הסתיימה! אורך: ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`);
+            
+            console.log('[RECORDING] ✅ Stopped, duration:', elapsed, 'seconds');
+        }
+        
+        function updateTimer() {
+            if (!startTime) return;
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            
+            document.getElementById('timer').textContent = 
+                `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
         }
         
         console.log('[APP] OnCam Coach v2.4 loaded');
