@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>OnCam Coach</title>
+    <title>OnCam Coach v2.3</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -128,7 +128,7 @@
                 <div class="subtitle-question">יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div class="subtitle-answer">אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.2 • עם טיפים</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.3 • שמירת וידאו + דוחות</p>
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
         </div>
@@ -306,11 +306,20 @@
             }
         }
 
-        function goToCamera() { 
-            show('camera-page'); 
-            setupCamera();
-            // הצג טיפים
-            document.getElementById('tips-box').style.display = 'block';
+        function goToCamera() {
+            console.log('[APP] 🚀 goToCamera() called');
+            try {
+                show('camera-page');
+                console.log('[APP] ✅ Switched to camera page');
+                setupCamera();
+                console.log('[APP] ✅ setupCamera() called');
+                // הצג טיפים
+                document.getElementById('tips-box').style.display = 'block';
+                console.log('[APP] ✅ Tips displayed');
+            } catch (err) {
+                console.error('[APP] ❌ Error in goToCamera:', err);
+                alert('שגיאה: ' + err.message);
+            }
         }
         function goHome() {
             // נקה הכל בלי להראות תוצאות
