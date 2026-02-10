@@ -182,6 +182,7 @@
             </div>
             
             <div class="transcript-box" style="max-height: 200px;"><strong>תמלול מלא:</strong><br><span id="result-transcript"></span></div>
+            <button class="btn btn-success" onclick="downloadVideo()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-bottom: 10px;">💾 שמור וידאו לגלריה</button>
             <button class="btn btn-primary" onclick="reRecord()">🔄 אימון נוסף</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריה</button>
             <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
@@ -201,6 +202,108 @@
         let eyeScore = 100, eyeHistory = [];
         let brightnessHistory = [];  // שמירת כל נתוני הבהירות!
         let lastWords = 0, silenceCount = 0;
+        let videoRecorder, recordedChunks = [];  // הקלטת וידאו!
+        let db;  // IndexedDB
+
+        // פתיחת IndexedDB
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('OnCamCoachDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('sessions')) {
+                        const store = db.createObjectStore('sessions', { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                };
+            });
+        }
+
+        // אתחול DB
+        openDB().catch(err => console.error('[DB] Failed to open:', err));
+
+        // שמירת סשן ב-IndexedDB
+        async function saveSession(sessionData) {
+            if (!db) {
+                console.error('[DB] DB not ready');
+                return;
+            }
+            
+            try {
+                const tx = db.transaction('sessions', 'readwrite');
+                const store = tx.objectStore('sessions');
+                
+                await store.add(sessionData);
+                
+                console.log('[DB] ✅ Session saved');
+                
+                // מחיקת סשנים ישנים (שמור רק 5 אחרונים)
+                await cleanOldSessions();
+                
+            } catch (err) {
+                console.error('[DB] ❌ Save failed:', err);
+            }
+        }
+
+        // מחיקת סשנים ישנים - שמירת 5 אחרונים בלבד
+        async function cleanOldSessions() {
+            if (!db) return;
+            
+            try {
+                const tx = db.transaction('sessions', 'readwrite');
+                const store = tx.objectStore('sessions');
+                const index = store.index('timestamp');
+                
+                const allSessions = await index.getAll();
+                
+                if (allSessions.length > 5) {
+                    // מיין לפי timestamp (מהישן לחדש)
+                    allSessions.sort((a, b) => a.timestamp - b.timestamp);
+                    
+                    // מחק את הישנים
+                    const toDelete = allSessions.slice(0, allSessions.length - 5);
+                    for (const session of toDelete) {
+                        await store.delete(session.id);
+                        console.log(`[DB] 🗑️ Deleted old session ${session.id}`);
+                    }
+                }
+            } catch (err) {
+                console.error('[DB] ❌ Clean failed:', err);
+            }
+        }
+
+        // טעינת כל הסשנים מ-DB
+        async function loadSessions() {
+            if (!db) {
+                console.error('[DB] DB not ready');
+                return [];
+            }
+            
+            try {
+                const tx = db.transaction('sessions', 'readonly');
+                const store = tx.objectStore('sessions');
+                const index = store.index('timestamp');
+                
+                const sessions = await index.getAll();
+                
+                // מיין מהחדש לישן
+                sessions.sort((a, b) => b.timestamp - a.timestamp);
+                
+                console.log('[DB] ✅ Loaded', sessions.length, 'sessions');
+                return sessions;
+                
+            } catch (err) {
+                console.error('[DB] ❌ Load failed:', err);
+                return [];
+            }
+        }
 
         function goToCamera() { 
             show('camera-page'); 
@@ -262,6 +365,7 @@
             transcript = ''; wordCount = 0; wordCountHistory = []; currentWPM = 0;
             eyeScore = 100; eyeHistory = []; brightnessHistory = [];
             lastWords = 0; silenceCount = 0;
+            recordedChunks = [];  // איפוס chunks של וידאו
             
             // הסתר טיפים
             document.getElementById('tips-box').style.display = 'none';
@@ -284,11 +388,23 @@
             // קשר עין - חכם ומדויק!
             eyeInterval = setInterval(checkEyeContact, 2000);
             
+            // התחלת הקלטת וידאו!
             try {
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.start();
-                console.log('[VIDEO] ✅ Recording');
-            } catch(e) { console.error('[VIDEO] ❌', e); }
+                videoRecorder = new MediaRecorder(stream, { 
+                    mimeType: 'video/webm;codecs=vp8,opus',
+                    videoBitsPerSecond: 1000000  // 1 Mbps - איכות סבירה
+                });
+                videoRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                        console.log(`[VIDEO] 📦 Chunk ${recordedChunks.length}: ${e.data.size} bytes`);
+                    }
+                };
+                videoRecorder.start(1000);  // chunk כל שנייה
+                console.log('[VIDEO] 📹 Recording started');
+            } catch(e) { 
+                console.error('[VIDEO] ❌ Failed:', e); 
+            }
             
             startSpeech();
         }
@@ -298,7 +414,12 @@
             clearInterval(timerInterval);
             clearInterval(eyeInterval);
             
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            // עצירת הקלטת וידאו
+            if (videoRecorder && videoRecorder.state !== 'inactive') {
+                videoRecorder.stop();
+                console.log('[VIDEO] ⏹️ Stopped, chunks:', recordedChunks.length);
+            }
+            
             if (recognition) { recognition.stop(); recognition = null; }
             
             document.getElementById('stats-box').style.display = 'none';
@@ -648,12 +769,59 @@
             let summary = generateSummary(wpm, wordCount, elapsed, avgEye, avgBrightness);
             document.getElementById('summary-text').textContent = summary;
             
-            saveHistory(score, wpm, wordCount, elapsed, eyeLabel, transcript);
+            // יצירת blob של הוידאו
+            let videoBlob = null;
+            if (recordedChunks.length > 0) {
+                videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+                console.log(`[VIDEO] 📦 Created blob: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+            }
+            
+            // שמירה ב-IndexedDB
+            const sessionData = {
+                timestamp: Date.now(),
+                score: score,
+                wpm: wpm,
+                wordCount: wordCount,
+                duration: elapsed,
+                eyeScore: avgEye,
+                eyeLabel: eyeLabel,
+                avgBrightness: avgBrightness,
+                transcript: transcript,
+                summary: summary,
+                videoBlob: videoBlob  // שמירת הוידאו!
+            };
+            
+            saveSession(sessionData);
+            
             show('results-page');
             
             console.log(`[RESULTS] 🏆 Score: ${score} | 🎯 ${wpm} WPM | 💬 ${wordCount} words | ⏱️ ${elapsed}s`);
         }
         
+        // הורדת וידאו לגלריה
+        function downloadVideo() {
+            if (recordedChunks.length === 0) {
+                alert('אין וידאו זמין להורדה');
+                return;
+            }
+            
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `oncam-coach-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            console.log('[VIDEO] 💾 Downloaded');
+        }
+
         function generateSummary(wpm, words, time, eyeScore, avgBrightness) {
             let parts = [];
             
@@ -717,66 +885,108 @@
             console.log('[HISTORY] 📊 Total sessions:', hist.length);
         }
 
-        function loadHistory() {
-            const hist = JSON.parse(localStorage.getItem('oncam') || '[]');
+        async function loadHistory() {
+            const sessions = await loadSessions();
             const list = document.getElementById('history-list');
             
-            console.log('[HISTORY] 📂 Loading... Found:', hist.length, 'sessions');
+            console.log('[HISTORY] 📂 Loading... Found:', sessions.length, 'sessions');
             
-            if (hist.length === 0) {
+            if (sessions.length === 0) {
                 list.innerHTML = '<div class="empty-state"><div style="font-size:3em">📭</div><div>אין אימונים שמורים</div><div style="font-size:0.9em;margin-top:10px;color:#bbb">הרץ אימון ראשון כדי להתחיל</div></div>';
                 return;
             }
             
-            list.innerHTML = hist.map((h, idx) => `
-                <div class="history-item">
-                    <button class="delete-btn" onclick="deleteHistory(${h.id}, event)">🗑️</button>
-                    <div class="history-info" onclick="viewHistory(${h.id})">
-                        <div class="history-date">${h.date}</div>
-                        <div class="history-stats">${h.wpm} WPM · ${h.words} מילים · ${Math.floor(h.time/60)}:${String(h.time%60).padStart(2,'0')}</div>
+            list.innerHTML = sessions.map((session, idx) => {
+                const date = new Date(session.timestamp).toLocaleString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const hasVideo = session.videoBlob && session.videoBlob.size > 0;
+                const videoIcon = hasVideo ? '🎥' : '';
+                
+                return `
+                    <div class="history-item">
+                        <button class="delete-btn" onclick="deleteSession(${session.id}, event)">🗑️</button>
+                        <div class="history-info" onclick="viewSession(${session.id})">
+                            <div class="history-date">${date} ${videoIcon}</div>
+                            <div class="history-stats">${session.wpm} WPM · ${session.wordCount} מילים · ${Math.floor(session.duration/60)}:${String(session.duration%60).padStart(2,'0')}</div>
+                        </div>
+                        <div class="history-score">${session.score}</div>
                     </div>
-                    <div class="history-score">${h.score}</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
-            console.log('[HISTORY] ✅ Displayed', hist.length, 'items');
+            console.log('[HISTORY] ✅ Displayed', sessions.length, 'items');
         }
 
-        function deleteHistory(id, event) {
+        async function deleteSession(id, event) {
             event.stopPropagation();
             if (!confirm('למחוק אימון זה?')) return;
             
-            let hist = JSON.parse(localStorage.getItem('oncam') || '[]');
-            const before = hist.length;
-            hist = hist.filter(h => h.id !== id);
-            localStorage.setItem('oncam', JSON.stringify(hist));
+            if (!db) return;
             
-            console.log('[HISTORY] 🗑️ Deleted session', id, '| Before:', before, '→ After:', hist.length);
-            loadHistory();
+            try {
+                const tx = db.transaction('sessions', 'readwrite');
+                const store = tx.objectStore('sessions');
+                await store.delete(id);
+                
+                console.log('[DB] 🗑️ Deleted session', id);
+                loadHistory();
+            } catch (err) {
+                console.error('[DB] ❌ Delete failed:', err);
+            }
         }
 
-        function viewHistory(id) {
-            const hist = JSON.parse(localStorage.getItem('oncam') || '[]');
-            const h = hist.find(x => x.id === id);
-            if (!h) return console.error('[HISTORY] ❌ Session not found:', id);
+        async function viewSession(id) {
+            if (!db) return;
             
-            console.log('[HISTORY] 👁️ Viewing:', h);
-            
-            document.getElementById('final-score').textContent = h.score;
-            document.getElementById('result-wpm').textContent = h.wpm;
-            document.getElementById('result-words').textContent = h.words;
-            document.getElementById('result-time').textContent = `${Math.floor(h.time/60)}:${String(h.time%60).padStart(2,'0')}`;
-            document.getElementById('result-eye').textContent = h.eye;
-            document.getElementById('result-transcript').textContent = h.trans || 'אין תמלול';
-            
-            show('results-page');
+            try {
+                const tx = db.transaction('sessions', 'readonly');
+                const store = tx.objectStore('sessions');
+                const session = await store.get(id);
+                
+                if (!session) {
+                    console.error('[HISTORY] ❌ Session not found:', id);
+                    return;
+                }
+                
+                console.log('[HISTORY] 👁️ Viewing session', id);
+                
+                // הצג את התוצאות
+                document.getElementById('final-score').textContent = session.score;
+                document.getElementById('result-wpm').textContent = session.wpm;
+                document.getElementById('result-words').textContent = session.wordCount;
+                document.getElementById('result-time').textContent = `${Math.floor(session.duration/60)}:${String(session.duration%60).padStart(2,'0')}`;
+                document.getElementById('result-eye').textContent = session.eyeLabel || 'לא זמין';
+                document.getElementById('result-transcript').textContent = session.transcript || 'אין תמלול';
+                document.getElementById('summary-text').textContent = session.summary || '';
+                
+                // אם יש וידאו - אפשר להוריד אותו
+                if (session.videoBlob && session.videoBlob.size > 0) {
+                    // שמור זמנית ב-recordedChunks כדי שניתן יהיה להוריד
+                    recordedChunks = [session.videoBlob];
+                } else {
+                    recordedChunks = [];
+                }
+                
+                show('results-page');
+                
+            } catch (err) {
+                console.error('[DB] ❌ View failed:', err);
+            }
         }
 
-        // טעינה אוטומטית של היסטוריה בהפעלה
+        function saveHistory(score, wpm, words, time, eye, trans) {
+            // פונקציה ישנה - לא נעשה בה שימוש יותר
+            // הכל נשמר דרך saveSession() ב-IndexedDB
+        }
+
+        // טעינה אוטומטית - בדיקת DB
         console.log('[APP] 🚀 OnCam Coach loaded');
-        console.log('[APP] 📊 Checking localStorage...');
-        const savedSessions = JSON.parse(localStorage.getItem('oncam') || '[]');
-        console.log('[APP] 💾 Found', savedSessions.length, 'saved sessions');
     </script>
 </body>
 </html>
