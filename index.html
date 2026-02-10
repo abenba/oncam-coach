@@ -527,25 +527,6 @@
             }
             const avgBrightness = sum / pixels;
             
-            // חישוב ריכוז הבהירות במרכז (כשפנים במרכז - יש peak של בהירות)
-            let centerSum = 0, centerPixels = 0;
-            const centerStartX = Math.floor(canvas.width * 0.3);
-            const centerEndX = Math.floor(canvas.width * 0.7);
-            const centerStartY = Math.floor(canvas.height * 0.3);
-            const centerEndY = Math.floor(canvas.height * 0.7);
-            
-            for (let y = centerStartY; y < centerEndY; y++) {
-                for (let x = centerStartX; x < centerEndX; x++) {
-                    const i = (y * canvas.width + x) * 4;
-                    centerSum += (data[i] + data[i+1] + data[i+2]) / 3;
-                    centerPixels++;
-                }
-            }
-            const centerBrightness = centerSum / centerPixels;
-            
-            // יחס בהירות מרכז לכללי (אם פנים במרכז - יחס גבוה)
-            const centerRatio = centerBrightness / avgBrightness;
-            
             // חישוב שונות (variance) - מודד כמה שינוי יש בתמונה
             let variance = 0;
             for (let i = 0; i < data.length; i += 4) {
@@ -559,9 +540,7 @@
                 window.eyeData = {
                     lastBrightness: avgBrightness,
                     lastVariance: variance,
-                    lastCenterRatio: centerRatio,
                     brightnessHistory: [avgBrightness],
-                    frozenCount: 0,
                     noFaceCount: 0,
                     lastAlert: 0
                 };
@@ -588,20 +567,15 @@
             const varChange = Math.abs(variance - window.eyeData.lastVariance);
             const movement = brightChange + (varChange / 100);
             
-            // שינוי ביחס המרכז
-            const centerRatioChange = Math.abs(centerRatio - window.eyeData.lastCenterRatio);
+            console.log(`[EYE] 💡 Bright: ${avgBrightness.toFixed(0)} (last: ${window.eyeData.lastBrightness.toFixed(0)}, avg: ${avgHistBrightness.toFixed(0)}), Change: ${brightChange.toFixed(1)}, Movement: ${movement.toFixed(1)}, Var: ${variance.toFixed(0)}`);
             
-            console.log(`[EYE] 💡 Bright: ${avgBrightness.toFixed(0)} (avg: ${avgHistBrightness.toFixed(0)}), Center: ${centerBrightness.toFixed(0)}, Ratio: ${centerRatio.toFixed(2)}, Movement: ${movement.toFixed(1)}, Var: ${variance.toFixed(0)}`);
+            // *** זיהוי פשוט וישיר: שינוי גדול = יציאה מהפריים ***
+            const bigChange = brightChange > 25;  // שינוי של 25+ ביחידות בהירות
+            const bigMovement = movement > 8;     // או תנועה גדולה מאד
             
-            // *** זיהוי יציאה מהפריים - בדיקת יחס מרכז ***
-            // כשפנים במרכז: centerRatio בדרך כלל 0.95-1.05
-            // כשפנים יוצאות: centerRatio יורד ל-0.7-0.9 או עולה ל-1.1-1.3
-            const isFaceOutOfFrame = 
-                (centerRatio < 0.90 || centerRatio > 1.10);  // יחס חריג - סף יותר רגיש!
-            
-            if (isFaceOutOfFrame) {
+            if (bigChange || bigMovement) {
                 window.eyeData.noFaceCount++;
-                console.log(`[EYE] 🚨 NO FACE DETECTED! Ratio: ${centerRatio.toFixed(2)}, noFaceCount: ${window.eyeData.noFaceCount}`);
+                console.log(`[EYE] 🚨 BIG CHANGE! brightChange: ${brightChange.toFixed(1)}, movement: ${movement.toFixed(1)}, noFaceCount: ${window.eyeData.noFaceCount}`);
                 
                 if (window.eyeData.noFaceCount >= 1) {  // מיידי!
                     eyeScore = Math.max(0, eyeScore - 15);
@@ -609,20 +583,17 @@
                     indicator.className = 'error';
                     
                     const now = Date.now();
-                    if (now - window.eyeData.lastAlert > 6000) {
+                    if (now - window.eyeData.lastAlert > 5000) {
                         showFeedback('הפנים יצאו מהמסך! 👀', 'error');
                         window.eyeData.lastAlert = now;
                     }
-                    window.eyeData.lastBrightness = avgBrightness;
-                    window.eyeData.lastVariance = variance;
-                    window.eyeData.lastCenterRatio = centerRatio;
-                    eyeHistory.push(eyeScore);
-                    return;
                 }
             } else {
                 // איפוס מונה אם חזר למסך
-                window.eyeData.noFaceCount = Math.max(0, window.eyeData.noFaceCount - 1);
-                console.log(`[EYE] ✅ Face in frame, Ratio: ${centerRatio.toFixed(2)}`);
+                if (window.eyeData.noFaceCount > 0) {
+                    window.eyeData.noFaceCount--;
+                    console.log(`[EYE] ✅ Back to normal, noFaceCount: ${window.eyeData.noFaceCount}`);
+                }
             }
             
             // *** לוגיקה מכוילת - רגישות גבוהה ***
@@ -688,7 +659,6 @@
             
             window.eyeData.lastBrightness = avgBrightness;
             window.eyeData.lastVariance = variance;
-            window.eyeData.lastCenterRatio = centerRatio;
             eyeHistory.push(eyeScore);
         }
 
