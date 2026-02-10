@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 2.4 • פשוט ויעיל</p>
+            <p class="version">גרסה 2.5 • עם תמלול</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -97,6 +97,12 @@
             <div style="position: relative;">
                 <video id="video" autoplay muted></video>
                 <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
+                <div id="word-count" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">0 מילים</div>
+            </div>
+            
+            <div id="transcript-box" style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; min-height: 80px; border: 2px solid #e9ecef;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">תמלול:</div>
+                <div id="transcript-text" style="color: #999;">התמלול יופיע כאן...</div>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startRecording()">
@@ -125,6 +131,9 @@
     <script>
         let startTime = null;
         let timerInterval = null;
+        let recognition = null;
+        let transcript = '';
+        let wordCount = 0;
         
         function show(pageId) {
             // הסתר את כל הדפים
@@ -174,6 +183,13 @@
         function startRecording() {
             console.log('[RECORDING] Starting...');
             
+            // איפוס נתונים
+            transcript = '';
+            wordCount = 0;
+            document.getElementById('transcript-text').textContent = 'מקליט...';
+            document.getElementById('transcript-text').style.color = '#333';
+            document.getElementById('word-count').textContent = '0 מילים';
+            
             startTime = Date.now();
             
             // החלף כפתורים
@@ -183,7 +199,9 @@
             // התחל טיימר
             timerInterval = setInterval(updateTimer, 1000);
             
-            // הודעה לצ'ק
+            // התחל זיהוי דיבור
+            startSpeechRecognition();
+            
             console.log('[RECORDING] ✅ Started successfully');
         }
         
@@ -196,17 +214,29 @@
                 timerInterval = null;
             }
             
+            // עצור זיהוי דיבור
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
+            
             const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+            const mins = elapsed / 60;
+            const wpm = mins > 0 ? Math.round(wordCount / mins) : 0;
+            
             startTime = null;
             
             // החלף כפתורים
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
             
-            // הצג תוצאה פשוטה
-            alert(`הקלטה הסתיימה! אורך: ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`);
+            // הצג תוצאה
+            alert(`🎉 הקלטה הסתיימה!
+⏱️ זמן: ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}
+💬 מילים: ${wordCount}
+🎯 קצב: ${wpm} מילים לדקה`);
             
-            console.log('[RECORDING] ✅ Stopped, duration:', elapsed, 'seconds');
+            console.log('[RECORDING] ✅ Stopped - Duration:', elapsed, 'Words:', wordCount, 'WPM:', wpm);
         }
         
         function updateTimer() {
@@ -220,7 +250,79 @@
                 `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
         }
         
-        console.log('[APP] OnCam Coach v2.4 loaded');
+        function startSpeechRecognition() {
+            // בדוק תמיכה
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                console.error('[SPEECH] Not supported');
+                document.getElementById('transcript-text').textContent = 'זיהוי דיבור לא נתמך בדפדפן זה';
+                document.getElementById('transcript-text').style.color = '#e74c3c';
+                return;
+            }
+            
+            recognition = new SpeechRecognition();
+            recognition.lang = 'he-IL';  // עברית
+            recognition.continuous = true;  // המשך הקלטה
+            recognition.interimResults = true;  // תוצאות זמניות
+            
+            recognition.onstart = () => {
+                console.log('[SPEECH] ✅ Started');
+            };
+            
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const text = result[0].transcript;
+                    
+                    if (result.isFinal) {
+                        finalTranscript += text + ' ';
+                    } else {
+                        interimTranscript += text;
+                    }
+                }
+                
+                if (finalTranscript) {
+                    transcript += finalTranscript;
+                    wordCount = transcript.trim().split(/\s+/).filter(word => word.length > 0).length;
+                    
+                    document.getElementById('word-count').textContent = `${wordCount} מילים`;
+                    console.log('[SPEECH] New words:', finalTranscript.trim(), '| Total:', wordCount);
+                }
+                
+                // הצג תמלול (קבוע + זמני)
+                const displayText = transcript + interimTranscript;
+                document.getElementById('transcript-text').textContent = displayText || 'מקליט...';
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('[SPEECH] Error:', event.error);
+                if (event.error === 'not-allowed') {
+                    document.getElementById('transcript-text').textContent = 'נדרשת הרשאה למיקרופון';
+                    document.getElementById('transcript-text').style.color = '#e74c3c';
+                }
+            };
+            
+            recognition.onend = () => {
+                console.log('[SPEECH] Ended, restarting...');
+                if (startTime) {  // רק אם עדיין מקליטים
+                    setTimeout(() => {
+                        if (recognition) recognition.start();
+                    }, 1000);
+                }
+            };
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('[SPEECH] Start error:', error);
+            }
+        }
+        
+        console.log('[APP] OnCam Coach v2.5 loaded');
     </script>
 </body>
 </html>
