@@ -20,6 +20,8 @@
             align-items: center;
             padding: 10px;
         }
+        /* Test - אם הצבע משתנה ל-red = JavaScript עובד */
+        .js-test { background-color: green !important; }
         .container { width: 100%; max-width: 500px; }
         .page { display: none; background: white; border-radius: 25px; padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .page.active { display: block; }
@@ -40,7 +42,7 @@
             color: #555;
             font-weight: 500;
         }
-        .btn { width: 100%; padding: 18px; margin: 12px 0; border: none; border-radius: 15px; font-size: 1.1em; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn { width: 100%; padding: 18px; margin: 12px 0; border: none; border-radius: 15px; font-size: 1.1em; font-weight: 600; cursor: pointer; font-family: inherit; -webkit-appearance: none; -webkit-touch-callout: none; -webkit-user-select: none; touch-action: manipulation; }
         .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .btn-secondary { background: #f0f0f0; color: #333; }
         .btn-danger { background: #e74c3c; color: white; }
@@ -131,8 +133,8 @@
                 <div class="subtitle-answer">אני כאן בשבילך.</div>
             </div>
             <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 2.3 • שמירת וידאו + דוחות</p>
-            <button id="start-training-btn" class="btn btn-primary">🚀 התחל אימון חדש</button>
-            <button id="history-btn" class="btn btn-secondary">📊 היסטוריית אימונים</button>
+            <button id="start-training-btn" class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
+            <button id="history-btn" class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
         </div>
 
         <div id="camera-page" class="page">
@@ -1182,6 +1184,12 @@
 
         // טעינה אוטומטית - בדיקת DB
         console.log('[APP] 🚀 OnCam Coach loaded');
+        
+        // Test פשוט - אם JavaScript עובד
+        document.body.style.backgroundColor = 'red';
+        setTimeout(() => {
+            document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }, 1000);
         
         // הוספת event listeners אמינים
         document.addEventListener('DOMContentLoaded', function() {
