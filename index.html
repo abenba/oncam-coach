@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 2.5 • עם תמלול</p>
+            <p class="version">גרסה 2.6 • עם תוצאות</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -122,6 +122,53 @@
             <p style="text-align: center; padding: 50px; color: #999;">
                 אין אימונים שמורים
             </p>
+            <button class="btn btn-secondary" onclick="goHome()">
+                🏠 חזור לבית
+            </button>
+        </div>
+
+        <!-- עמוד תוצאות -->
+        <div id="results" class="page">
+            <h1>🏆 תוצאות</h1>
+            
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 20px 0;">
+                <div style="font-size: 1.2em; margin-bottom: 10px;">ציון כללי</div>
+                <div id="final-score" style="font-size: 3.5em; font-weight: 800; margin: 10px 0;">0</div>
+                <div style="margin-top: 5px;">מתוך 100</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">מילים לדקה</div>
+                    <div id="result-wpm" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">סה"כ מילים</div>
+                    <div id="result-words" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">זמן</div>
+                    <div id="result-time" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0:00</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">הערכה</div>
+                    <div id="result-rating" style="font-size: 1.5em; font-weight: 700; color: #667eea; margin: 8px 0;">-</div>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; border: 2px solid #e9ecef;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">💬 סיכום:</div>
+                <div id="summary-text" style="color: #555; line-height: 1.6;"></div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; border: 2px solid #e9ecef; max-height: 150px; overflow-y: auto;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">תמלול מלא:</div>
+                <div id="result-transcript" style="color: #555;"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="goToCamera()">
+                🔄 אימון נוסף
+            </button>
             <button class="btn btn-secondary" onclick="goHome()">
                 🏠 חזור לבית
             </button>
@@ -230,13 +277,89 @@
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
             
-            // הצג תוצאה
-            alert(`🎉 הקלטה הסתיימה!
-⏱️ זמן: ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}
-💬 מילים: ${wordCount}
-🎯 קצב: ${wpm} מילים לדקה`);
+            // חישוב ציון
+            const score = calculateScore(wpm, wordCount, elapsed);
+            const rating = getSimpleRating(score);
+            const summary = generateSimpleSummary(wpm, wordCount, elapsed);
+            
+            // הצג תוצאות
+            showResults(score, wpm, wordCount, elapsed, rating, summary);
             
             console.log('[RECORDING] ✅ Stopped - Duration:', elapsed, 'Words:', wordCount, 'WPM:', wpm);
+        }
+        
+        function calculateScore(wpm, words, time) {
+            let score = 0;
+            
+            // ציון לקצב (50 נקודות)
+            if (wpm >= 120 && wpm <= 180) score += 50;
+            else if (wpm >= 100 && wpm < 120) score += 40;
+            else if (wpm >= 80 && wpm < 100) score += 30;
+            else if (wpm >= 60 && wpm < 80) score += 20;
+            else if (wpm > 0) score += 10;
+            
+            // ציון לכמות מילים (30 נקודות)
+            if (words >= 100) score += 30;
+            else if (words >= 50) score += 25;
+            else if (words >= 25) score += 15;
+            else if (words >= 10) score += 10;
+            else if (words > 0) score += 5;
+            
+            // ציון לאורך זמן (20 נקודות)
+            if (time >= 60) score += 20;
+            else if (time >= 30) score += 15;
+            else if (time >= 15) score += 10;
+            else if (time >= 5) score += 5;
+            
+            return Math.min(100, score);
+        }
+        
+        function getSimpleRating(score) {
+            if (score >= 90) return 'מצוין! ⭐⭐⭐';
+            else if (score >= 75) return 'טוב מאוד! ⭐⭐';
+            else if (score >= 60) return 'טוב! ⭐';
+            else if (score >= 40) return 'בסדר 👌';
+            else return 'צריך תרגול 💪';
+        }
+        
+        function generateSimpleSummary(wpm, words, time) {
+            const parts = [];
+            
+            if (wpm >= 120 && wpm <= 180) {
+                parts.push('קצב דיבור מצוין');
+            } else if (wpm > 180) {
+                parts.push('דיברת מהר מדי - כדאי להאט');
+            } else if (wpm < 100 && wpm > 0) {
+                parts.push('קצב איטי - כדאי להאיץ מעט');
+            }
+            
+            if (words >= 50) {
+                parts.push('כמות מילים טובה');
+            } else if (words < 20) {
+                parts.push('נסה לדבר יותר בפעם הבאה');
+            }
+            
+            if (time >= 60) {
+                parts.push('אורך זמן מצוין');
+            } else if (time < 30) {
+                parts.push('אימון קצר - נסה זמן יותר ארוך');
+            }
+            
+            return parts.length > 0 ? parts.join(', ') + '.' : 'המשך להתאמן!';
+        }
+        
+        function showResults(score, wpm, words, time, rating, summary) {
+            // מלא את הנתונים
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('result-wpm').textContent = wpm;
+            document.getElementById('result-words').textContent = words;
+            document.getElementById('result-time').textContent = `${Math.floor(time/60)}:${String(time%60).padStart(2,'0')}`;
+            document.getElementById('result-rating').textContent = rating;
+            document.getElementById('summary-text').textContent = summary;
+            document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
+            
+            // עבור לעמוד תוצאות
+            show('results');
         }
         
         function updateTimer() {
