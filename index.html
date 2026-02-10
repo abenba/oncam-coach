@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 2.6 • עם תוצאות</p>
+            <p class="version">גרסה 2.7 • עם קשר עין</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -98,6 +98,7 @@
                 <video id="video" autoplay muted></video>
                 <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
                 <div id="word-count" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">0 מילים</div>
+                <div id="eye-indicator" style="position: absolute; bottom: 15px; left: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 1em; font-weight: bold; display: none;">👁️ טוב</div>
             </div>
             
             <div id="transcript-box" style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; min-height: 80px; border: 2px solid #e9ecef;">
@@ -151,7 +152,7 @@
                     <div id="result-time" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0:00</div>
                 </div>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
-                    <div style="color: #666; font-size: 0.9em;">הערכה</div>
+                    <div style="color: #666; font-size: 0.9em;">קשר עין</div>
                     <div id="result-rating" style="font-size: 1.5em; font-weight: 700; color: #667eea; margin: 8px 0;">-</div>
                 </div>
             </div>
@@ -178,9 +179,11 @@
     <script>
         let startTime = null;
         let timerInterval = null;
+        let eyeCheckInterval = null;
         let recognition = null;
         let transcript = '';
         let wordCount = 0;
+        let eyeScore = 100;
         
         function show(pageId) {
             // הסתר את כל הדפים
@@ -196,7 +199,17 @@
             
             // עצור הקלטה אם רצה
             if (startTime) {
-                stopRecording();
+                // עצור הכל
+                if (timerInterval) clearInterval(timerInterval);
+                if (eyeCheckInterval) clearInterval(eyeCheckInterval);
+                if (recognition) recognition.stop();
+                
+                startTime = null;
+                timerInterval = null;
+                eyeCheckInterval = null;
+                recognition = null;
+                
+                document.getElementById('eye-indicator').style.display = 'none';
             }
             
             show('home');
@@ -233,9 +246,11 @@
             // איפוס נתונים
             transcript = '';
             wordCount = 0;
+            eyeScore = 100;
             document.getElementById('transcript-text').textContent = 'מקליט...';
             document.getElementById('transcript-text').style.color = '#333';
             document.getElementById('word-count').textContent = '0 מילים';
+            document.getElementById('eye-indicator').style.display = 'block';
             
             startTime = Date.now();
             
@@ -245,6 +260,9 @@
             
             // התחל טיימר
             timerInterval = setInterval(updateTimer, 1000);
+            
+            // התחל בדיקת קשר עין
+            eyeCheckInterval = setInterval(checkEyeContact, 3000);
             
             // התחל זיהוי דיבור
             startSpeechRecognition();
@@ -260,6 +278,13 @@
                 clearInterval(timerInterval);
                 timerInterval = null;
             }
+            
+            // עצור בדיקת קשר עין
+            if (eyeCheckInterval) {
+                clearInterval(eyeCheckInterval);
+                eyeCheckInterval = null;
+            }
+            document.getElementById('eye-indicator').style.display = 'none';
             
             // עצור זיהוי דיבור
             if (recognition) {
@@ -278,38 +303,43 @@
             document.getElementById('stop-btn').style.display = 'none';
             
             // חישוב ציון
-            const score = calculateScore(wpm, wordCount, elapsed);
+            const score = calculateScore(wpm, wordCount, elapsed, eyeScore);
             const rating = getSimpleRating(score);
-            const summary = generateSimpleSummary(wpm, wordCount, elapsed);
+            const summary = generateSimpleSummary(wpm, wordCount, elapsed, eyeScore);
+            const eyeRating = getEyeRating(eyeScore);
             
             // הצג תוצאות
-            showResults(score, wpm, wordCount, elapsed, rating, summary);
+            showResults(score, wpm, wordCount, elapsed, rating, summary, eyeRating);
             
             console.log('[RECORDING] ✅ Stopped - Duration:', elapsed, 'Words:', wordCount, 'WPM:', wpm);
         }
         
-        function calculateScore(wpm, words, time) {
+        function calculateScore(wpm, words, time, eyeScore) {
             let score = 0;
             
-            // ציון לקצב (50 נקודות)
-            if (wpm >= 120 && wpm <= 180) score += 50;
-            else if (wpm >= 100 && wpm < 120) score += 40;
-            else if (wpm >= 80 && wpm < 100) score += 30;
-            else if (wpm >= 60 && wpm < 80) score += 20;
-            else if (wpm > 0) score += 10;
+            // ציון לקצב (40 נקודות)
+            if (wpm >= 120 && wpm <= 180) score += 40;
+            else if (wpm >= 100 && wpm < 120) score += 32;
+            else if (wpm >= 80 && wpm < 100) score += 24;
+            else if (wpm >= 60 && wpm < 80) score += 16;
+            else if (wpm > 0) score += 8;
             
-            // ציון לכמות מילים (30 נקודות)
-            if (words >= 100) score += 30;
-            else if (words >= 50) score += 25;
-            else if (words >= 25) score += 15;
-            else if (words >= 10) score += 10;
-            else if (words > 0) score += 5;
+            // ציון לכמות מילים (25 נקודות)
+            if (words >= 100) score += 25;
+            else if (words >= 50) score += 20;
+            else if (words >= 25) score += 12;
+            else if (words >= 10) score += 8;
+            else if (words > 0) score += 4;
             
-            // ציון לאורך זמן (20 נקודות)
-            if (time >= 60) score += 20;
-            else if (time >= 30) score += 15;
-            else if (time >= 15) score += 10;
-            else if (time >= 5) score += 5;
+            // ציון לאורך זמן (15 נקודות)
+            if (time >= 60) score += 15;
+            else if (time >= 30) score += 12;
+            else if (time >= 15) score += 8;
+            else if (time >= 5) score += 4;
+            
+            // ציון לקשר עין (20 נקודות)
+            const eyePoints = Math.round((eyeScore / 100) * 20);
+            score += eyePoints;
             
             return Math.min(100, score);
         }
@@ -322,7 +352,7 @@
             else return 'צריך תרגול 💪';
         }
         
-        function generateSimpleSummary(wpm, words, time) {
+        function generateSimpleSummary(wpm, words, time, eyeScore) {
             const parts = [];
             
             if (wpm >= 120 && wpm <= 180) {
@@ -345,16 +375,29 @@
                 parts.push('אימון קצר - נסה זמן יותר ארוך');
             }
             
+            if (eyeScore >= 80) {
+                parts.push('תאורה וקשר עין טובים');
+            } else if (eyeScore < 60) {
+                parts.push('כדאי לשפר תאורה');
+            }
+            
             return parts.length > 0 ? parts.join(', ') + '.' : 'המשך להתאמן!';
         }
         
-        function showResults(score, wpm, words, time, rating, summary) {
+        function getEyeRating(eyeScore) {
+            if (eyeScore >= 90) return 'מצוין ✨';
+            else if (eyeScore >= 75) return 'טוב 👍';
+            else if (eyeScore >= 60) return 'בסדר 👌';
+            else return 'צריך שיפור 💡';
+        }
+        
+        function showResults(score, wpm, words, time, rating, summary, eyeRating) {
             // מלא את הנתונים
             document.getElementById('final-score').textContent = score;
             document.getElementById('result-wpm').textContent = wpm;
             document.getElementById('result-words').textContent = words;
             document.getElementById('result-time').textContent = `${Math.floor(time/60)}:${String(time%60).padStart(2,'0')}`;
-            document.getElementById('result-rating').textContent = rating;
+            document.getElementById('result-rating').textContent = eyeRating;
             document.getElementById('summary-text').textContent = summary;
             document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
             
@@ -371,6 +414,57 @@
             
             document.getElementById('timer').textContent = 
                 `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        }
+        
+        function checkEyeContact() {
+            const video = document.getElementById('video');
+            const indicator = document.getElementById('eye-indicator');
+            
+            if (!video.videoWidth) return;
+            
+            try {
+                // צילום פריים קטן לבדיקת בהירות
+                const canvas = document.createElement('canvas');
+                canvas.width = 60;
+                canvas.height = 45;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // חישוב בהירות ממוצעת
+                let totalBrightness = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    totalBrightness += brightness;
+                }
+                const avgBrightness = totalBrightness / (data.length / 4);
+                
+                // בדיקת איכות תאורה ומיקום
+                if (avgBrightness < 60) {
+                    // תאורה חלשה
+                    eyeScore = Math.max(0, eyeScore - 5);
+                    indicator.textContent = '💡 אור חלש';
+                    indicator.style.background = 'rgba(255, 152, 0, 0.9)';
+                } else if (avgBrightness < 80) {
+                    // תאורה בינונית
+                    indicator.textContent = '👁️ בסדר';
+                    indicator.style.background = 'rgba(255, 193, 7, 0.9)';
+                } else {
+                    // תאורה טובה
+                    eyeScore = Math.min(100, eyeScore + 1);
+                    indicator.textContent = '✅ מצוין';
+                    indicator.style.background = 'rgba(76, 175, 80, 0.9)';
+                }
+                
+                console.log(`[EYE] Brightness: ${avgBrightness.toFixed(1)}, Score: ${eyeScore}`);
+                
+            } catch (error) {
+                console.error('[EYE] Error:', error);
+                indicator.textContent = '👁️ בדיקה';
+                indicator.style.background = 'rgba(108, 117, 125, 0.9)';
+            }
         }
         
         function startSpeechRecognition() {
