@@ -183,6 +183,7 @@
             
             <div class="transcript-box" style="max-height: 200px;"><strong>תמלול מלא:</strong><br><span id="result-transcript"></span></div>
             <button class="btn btn-success" onclick="downloadVideo()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-bottom: 10px;">💾 שמור וידאו לגלריה</button>
+            <button class="btn btn-primary" onclick="downloadReport()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-bottom: 10px;">📄 שמור דוח תוצאות</button>
             <button class="btn btn-primary" onclick="reRecord()">🔄 אימון נוסף</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריה</button>
             <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
@@ -859,6 +860,188 @@
             }, 100);
             
             console.log('[VIDEO] 💾 Downloaded');
+        }
+
+        // הורדת דוח תוצאות כתמונה
+        function downloadReport() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 1200;
+            const ctx = canvas.getContext('2d');
+            
+            // רקע גרדיאנט
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // כרטיס לבן
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+            
+            // ריבוע מעוגל (תמיכה בכל הדפדפנים)
+            const x = 40, y = 40, w = 720, h = 1120, r = 20;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            
+            // כותרת
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎬 OnCam Coach', 400, 120);
+            
+            // תאריך
+            ctx.fillStyle = '#999';
+            ctx.font = '20px -apple-system, sans-serif';
+            const date = new Date().toLocaleString('he-IL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            ctx.fillText(date, 400, 160);
+            
+            // קו מפריד
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(100, 200);
+            ctx.lineTo(700, 200);
+            ctx.stroke();
+            
+            // ציון כללי
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.fillText('ציון כללי', 400, 260);
+            
+            const score = document.getElementById('final-score').textContent;
+            ctx.font = 'bold 72px -apple-system, sans-serif';
+            ctx.fillText(score, 400, 350);
+            
+            ctx.fillStyle = '#999';
+            ctx.font = '24px -apple-system, sans-serif';
+            ctx.fillText('מתוך 100', 400, 390);
+            
+            // נתונים
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 24px -apple-system, sans-serif';
+            
+            const wpm = document.getElementById('result-wpm').textContent;
+            const words = document.getElementById('result-words').textContent;
+            const time = document.getElementById('result-time').textContent;
+            const eye = document.getElementById('result-eye').textContent;
+            
+            let y = 480;
+            const lineHeight = 60;
+            
+            // מילים לדקה
+            ctx.fillStyle = '#999';
+            ctx.font = '20px -apple-system, sans-serif';
+            ctx.fillText('מילים לדקה', 650, y);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.fillText(wpm, 650, y + 35);
+            
+            y += lineHeight + 30;
+            
+            // סה"כ מילים
+            ctx.fillStyle = '#999';
+            ctx.font = '20px -apple-system, sans-serif';
+            ctx.fillText('סה"כ מילים', 650, y);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.fillText(words, 650, y + 35);
+            
+            y += lineHeight + 30;
+            
+            // זמן
+            ctx.fillStyle = '#999';
+            ctx.font = '20px -apple-system, sans-serif';
+            ctx.fillText('זמן', 650, y);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.fillText(time, 650, y + 35);
+            
+            y += lineHeight + 30;
+            
+            // קשר עין
+            ctx.fillStyle = '#999';
+            ctx.font = '20px -apple-system, sans-serif';
+            ctx.fillText('קשר עין', 650, y);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.fillText(eye, 650, y + 35);
+            
+            // קו מפריד
+            ctx.strokeStyle = '#eee';
+            ctx.beginPath();
+            ctx.moveTo(100, 800);
+            ctx.lineTo(700, 800);
+            ctx.stroke();
+            
+            // סיכום
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 28px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💬 סיכום האימון', 400, 860);
+            
+            const summary = document.getElementById('summary-text').textContent;
+            ctx.fillStyle = '#555';
+            ctx.font = '20px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            
+            // פיצול הסיכום לשורות
+            const maxWidth = 600;
+            const words2 = summary.split(' ');
+            let line = '';
+            y = 920;
+            
+            for (let i = 0; i < words2.length; i++) {
+                const testLine = line + words2[i] + ' ';
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > maxWidth && i > 0) {
+                    ctx.fillText(line, 680, y);
+                    line = words2[i] + ' ';
+                    y += 35;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, 680, y);
+            
+            // לוגו/חתימה
+            ctx.fillStyle = '#ccc';
+            ctx.font = '16px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('OnCam Coach • אימון נאומים מבוסס AI', 400, 1130);
+            
+            // הורדה
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `oncam-coach-report-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                console.log('[REPORT] 📄 Downloaded');
+            });
         }
 
         function generateSummary(wpm, words, time, eyeScore, avgBrightness) {
