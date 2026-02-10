@@ -24,7 +24,7 @@
         .js-test { background-color: green !important; }
         .container { width: 100%; max-width: 500px; }
         .page { display: none; background: white; border-radius: 25px; padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .page.active { display: block; }
+        .page#home-page { display: block; }
         h1 { color: #667eea; text-align: center; margin-bottom: 15px; font-size: 2em; font-weight: 700; }
         .subtitle { 
             text-align: center; 
@@ -126,7 +126,7 @@
 </head>
 <body>
     <div class="container">
-        <div id="home-page" class="page active">
+        <div id="home-page" class="page">
             <h1>🎤 OnCam Coach</h1>
             <div class="subtitle">
                 <div class="subtitle-question">יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
@@ -1182,38 +1182,96 @@
             // הכל נשמר דרך saveSession() ב-IndexedDB
         }
 
-        // טעינה אוטומטית - בדיקת DB
-        console.log('[APP] 🚀 OnCam Coach loaded');
+        // JavaScript פשוט לאייפון
+        console.log('[APP] Starting OnCam Coach...');
         
-        // Test פשוט - אם JavaScript עובד
-        document.body.style.backgroundColor = 'red';
-        setTimeout(() => {
-            document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        }, 1000);
+        // פונקציות בסיסיות
+        function show(pageId) {
+            var pages = document.getElementsByClassName('page');
+            for (var i = 0; i < pages.length; i++) {
+                pages[i].style.display = 'none';
+            }
+            document.getElementById(pageId).style.display = 'block';
+        }
         
-        // הוספת event listeners אמינים
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('[APP] ✅ DOM loaded');
+        function goToCamera() {
+            console.log('[APP] goToCamera called');
+            show('camera-page');
+            requestCameraAccess();
+        }
+        
+        function goToHistory() {
+            console.log('[APP] goToHistory called');  
+            show('history-page');
+            loadSimpleHistory();
+        }
+        
+        function goHome() {
+            console.log('[APP] goHome called');
+            show('home-page');
+        }
+        
+        function requestCameraAccess() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: true 
+                })
+                .then(function(stream) {
+                    console.log('[CAMERA] Access granted');
+                    var video = document.getElementById('video');
+                    video.srcObject = stream;
+                    window.currentStream = stream;
+                })
+                .catch(function(error) {
+                    console.error('[CAMERA] Error:', error);
+                    alert('לא ניתן לגשת למצלמה: ' + error.message);
+                });
+            } else {
+                alert('המצלמה לא נתמכת בדפדפן זה');
+            }
+        }
+        
+        function startRecording() {
+            console.log('[RECORDING] Starting...');
+            // לוגיקה בסיסית להקלטה
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            document.getElementById('transcript-text').innerHTML = 'מקליט...';
+        }
+        
+        function stopRecording() {
+            console.log('[RECORDING] Stopping...');
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+            document.getElementById('transcript-text').innerHTML = 'הקלטה הסתיימה';
+        }
+        
+        function loadSimpleHistory() {
+            var historyList = document.getElementById('history-list');
+            historyList.innerHTML = '<div style="text-align:center;padding:50px;color:#999;">אין אימונים שמורים</div>';
+        }
+        
+        // אתחול פשוט
+        window.onload = function() {
+            console.log('[APP] Window loaded');
             
-            const startBtn = document.getElementById('start-training-btn');
-            const historyBtn = document.getElementById('history-btn');
+            // הוסף event listeners פשוטים
+            var startBtn = document.getElementById('start-training-btn');
+            var historyBtn = document.getElementById('history-btn');
             
             if (startBtn) {
-                startBtn.addEventListener('click', function() {
-                    console.log('[APP] 🎯 Start button clicked');
-                    goToCamera();
-                });
-                console.log('[APP] ✅ Start button listener added');
+                startBtn.onclick = goToCamera;
+                console.log('[APP] Start button ready');
             }
             
             if (historyBtn) {
-                historyBtn.addEventListener('click', function() {
-                    console.log('[APP] 📊 History button clicked');
-                    goToHistory();
-                });
-                console.log('[APP] ✅ History button listener added');
+                historyBtn.onclick = goToHistory;
+                console.log('[APP] History button ready');
             }
-        });
+            
+            console.log('[APP] OnCam Coach ready!');
+        };
     </script>
 </body>
 </html>
