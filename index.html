@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.3 • debug זיהוי דיבור</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.4 • תמלול חי</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -105,6 +105,11 @@
             <div id="video-container">
                 <video id="video" autoplay muted></video>
                 <div id="status">מוכן</div>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #e9ecef; min-height: 60px;">
+                <strong>תמלול בזמן אמת:</strong><br>
+                <span id="live-transcript" style="color: #666;">התמלול יופיע כאן...</span>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
@@ -204,6 +209,8 @@
             document.getElementById('status').textContent = 'מוכן';
             document.getElementById('start-btn').textContent = '⏺️ התחל הקלטה';
             document.getElementById('start-btn').onclick = startBasicRecording;
+            document.getElementById('live-transcript').textContent = 'התמלול יופיע כאן...';
+            document.getElementById('live-transcript').style.color = '#666';
             startTime = null;
             transcript = '';
             wordCount = 0;
@@ -349,12 +356,19 @@
                     console.log('[SPEECH] 🎯 Final text added:', finalText.trim());
                     console.log('[SPEECH] 📊 Total transcript:', transcript);
                     console.log('[SPEECH] 🔢 Word count:', wordCount);
+                    
+                    // עדכון Status + תמלול חי
                     document.getElementById('status').textContent = `מקליט... ${wordCount} מילים`;
+                    document.getElementById('live-transcript').textContent = transcript || 'מדבר...';
+                    document.getElementById('live-transcript').style.color = '#333';
                 }
                 
                 if (interimText) {
                     console.log('[SPEECH] 🔤 Interim text:', interimText);
-                    document.getElementById('status').textContent = `מקליט... שומע: "${interimText}"`;
+                    
+                    // הצג תמלול זמני
+                    document.getElementById('live-transcript').textContent = (transcript + interimText) || 'מדבר...';
+                    document.getElementById('live-transcript').style.color = '#666'; // אפור לזמני
                 }
             };
             
