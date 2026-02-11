@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 6.1 • זיהוי מהיר + נגן מובנה</p>
+            <p class="version">גרסה 6.2 • תיקון ניווט קריטי!</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -330,12 +330,12 @@
                 document.getElementById('eye-indicator').style.display = 'none';
             }
             
-            show('home');
+            show('home-page');  // תיקון!
         }
         
         function goToCamera() {
             console.log('[APP] Going to camera');
-            show('camera');
+            show('camera-page');  // תיקון!
             
             // בקש גישה למצלמה
             navigator.mediaDevices.getUserMedia({ 
@@ -356,7 +356,7 @@
         function goToHistory() {
             console.log('[APP] Going to history');
             loadHistory();
-            show('history');
+            show('history-page');  // תיקון!
         }
         
         function saveToHistory(score, wpm, words, time, eyeRating, summary) {
@@ -546,7 +546,7 @@
             // הגדר נגן וידאו
             setupVideoPlayer();
             
-            show('results');
+            show('results-page');
         }
         
         function startRecording() {
@@ -738,7 +738,7 @@
             setupVideoPlayer();
             
             // עבור לעמוד תוצאות
-            show('results');
+            show('results-page');
         }
         
         function setupVideoPlayer() {
