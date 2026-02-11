@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 4.5 • תיקון דיבור ונגן</p>
+            <p class="version">גרסה 5.0 • IndexedDB + restart מהיר</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -228,7 +228,36 @@
     </div>
 
     <script>
-        let startTime = null;
+        // פתיחת IndexedDB לשמירת וידאויים
+        let videoDatabase = null;
+        
+        function openVideoDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('OnCamCoachVideos', 1);
+                
+                request.onerror = () => {
+                    console.error('[VIDEO-DB] Failed to open database');
+                    reject(request.error);
+                };
+                
+                request.onsuccess = () => {
+                    videoDatabase = request.result;
+                    console.log('[VIDEO-DB] ✅ Database opened');
+                    resolve(videoDatabase);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('videos')) {
+                        const store = db.createObjectStore('videos', { keyPath: 'sessionId' });
+                        console.log('[VIDEO-DB] Created videos store');
+                    }
+                };
+            });
+        }
+        
+        // פתח את ה-database בהתחלה
+        openVideoDatabase().catch(err => console.error('[VIDEO-DB] Init failed:', err));
         let timerInterval = null;
         let eyeCheckInterval = null;
         let recognition = null;
@@ -298,89 +327,54 @@
         }
         
         function saveToHistory(score, wpm, words, time, eyeRating, summary) {
+            const sessionId = Date.now();
+            
+            // שמירת מטא-דאטה ב-localStorage
             let history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+            const session = {
+                id: sessionId,
+                date: new Date().toLocaleString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }),
+                score: score,
+                wpm: wpm,
+                words: words,
+                time: time,
+                eyeRating: eyeRating,
+                summary: summary,
+                transcript: transcript,
+                hasVideo: recordedChunks.length > 0  // סימון שיש וידאו
+            };
             
-            // המרת וידאו ל-Base64 (יותר יציב ב-localStorage)
-            if (recordedChunks.length > 0) {
+            history.unshift(session);
+            if (history.length > 5) history = history.slice(0, 5);
+            localStorage.setItem('oncam-history', JSON.stringify(history));
+            console.log('[HISTORY] ✅ Saved session metadata');
+            
+            // שמירת וידאו ב-IndexedDB (אם יש)
+            if (recordedChunks.length > 0 && videoDatabase) {
                 const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-                console.log(`[VIDEO] 📦 Converting blob to Base64: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+                console.log(`[VIDEO-DB] 💾 Saving video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
                 
-                const reader = new FileReader();
-                reader.onload = function() {
-                    const videoBase64 = reader.result; // data:video/webm;base64,ABC123...
-                    
-                    const session = {
-                        id: Date.now(),
-                        date: new Date().toLocaleString('he-IL', {
-                            day: '2-digit',
-                            month: '2-digit', 
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }),
-                        score: score,
-                        wpm: wpm,
-                        words: words,
-                        time: time,
-                        eyeRating: eyeRating,
-                        summary: summary,
-                        transcript: transcript,
-                        videoBase64: videoBase64  // 🎥 Base64 במקום Blob!
-                    };
-                    
-                    console.log(`[HISTORY] 💾 Saving session with Base64 video: ${videoBase64.length} chars`);
-                    
-                    history.unshift(session);
-                    
-                    if (history.length > 5) {
-                        history = history.slice(0, 5);
-                    }
-                    
-                    try {
-                        localStorage.setItem('oncam-history', JSON.stringify(history));
-                        console.log('[HISTORY] ✅ Saved session with video, total:', history.length);
-                    } catch (err) {
-                        console.error('[HISTORY] ❌ Failed to save:', err);
-                        // נסה בלי וידאו
-                        delete session.videoBase64;
-                        localStorage.setItem('oncam-history', JSON.stringify(history));
-                        console.log('[HISTORY] ⚠️ Saved without video');
-                    }
+                const transaction = videoDatabase.transaction(['videos'], 'readwrite');
+                const store = transaction.objectStore('videos');
+                
+                store.add({
+                    sessionId: sessionId,
+                    videoBlob: videoBlob,
+                    timestamp: Date.now()
+                });
+                
+                transaction.onsuccess = () => {
+                    console.log('[VIDEO-DB] ✅ Video saved successfully');
                 };
                 
-                reader.onerror = function(err) {
-                    console.error('[VIDEO] ❌ Failed to convert to Base64:', err);
-                    // שמור בלי וידאו
-                    saveSessionWithoutVideo();
+                transaction.onerror = (err) => {
+                    console.error('[VIDEO-DB] ❌ Failed to save video:', err);
                 };
-                
-                reader.readAsDataURL(videoBlob);
-            } else {
-                console.log('[VIDEO] ❌ No chunks - saving without video');
-                saveSessionWithoutVideo();
-            }
-            
-            function saveSessionWithoutVideo() {
-                const session = {
-                    id: Date.now(),
-                    date: new Date().toLocaleString('he-IL', {
-                        day: '2-digit',
-                        month: '2-digit', 
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    }),
-                    score: score,
-                    wpm: wpm,
-                    words: words,
-                    time: time,
-                    eyeRating: eyeRating,
-                    summary: summary,
-                    transcript: transcript
-                };
-                
-                history.unshift(session);
-                if (history.length > 5) history = history.slice(0, 5);
-                localStorage.setItem('oncam-history', JSON.stringify(history));
-                console.log('[HISTORY] ✅ Saved session without video');
             }
         }
         
@@ -407,11 +401,11 @@
             }
             
             list.innerHTML = history.map(session => {
-                const hasVideo = (session.videoBlob && session.videoBlob.size > 0) || (session.videoBase64 && session.videoBase64.length > 0);
+                const hasVideo = session.hasVideo === true;
                 const videoIcon = hasVideo ? ' 🎥' : '';
                 
                 // DEBUG - בואו נראה מה קורה
-                console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}, videoBlob = ${!!session.videoBlob}, videoBase64 = ${!!session.videoBase64}`);
+                console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}`);
                 
                 const playButton = hasVideo ? `
                     <button onclick="playHistoryVideo(${session.id}, event)" style="
@@ -780,21 +774,42 @@
             recognition.interimResults = true;
             recognition.maxAlternatives = 1;
             
-            // הגדרות נוספות לביצועים
+            // הגדרות חדשות - יותר אגרסיביות
             if ('webkitSpeechRecognition' in window) {
                 recognition.webkitServiceType = 'search';  // מהיר יותר
+                recognition.webkitGrammars = null;  // בלי grammar checking - מהיר יותר
             }
             
             let restartCount = 0;
             let lastResultTime = Date.now();
+            let forceRestartTimer = null;
             
             recognition.onstart = () => {
                 console.log('[SPEECH] ✅ Started, restart count:', restartCount);
                 lastResultTime = Date.now();
+                
+                // אם אין תגובה תוך 10 שניות - restart בכוח
+                forceRestartTimer = setTimeout(() => {
+                    console.log('[SPEECH] ⚠️ No response for 10s - forcing restart');
+                    if (recognition && startTime) {
+                        try {
+                            recognition.stop();
+                        } catch (e) {
+                            console.log('[SPEECH] Stop error during force restart:', e);
+                        }
+                    }
+                }, 10000);
             };
             
             recognition.onresult = (event) => {
                 lastResultTime = Date.now();
+                
+                // בטל את force restart timer כי יש תגובה
+                if (forceRestartTimer) {
+                    clearTimeout(forceRestartTimer);
+                    forceRestartTimer = null;
+                }
+                
                 let finalTranscript = '';
                 let interimTranscript = '';
                 
@@ -1028,41 +1043,48 @@
         function playHistoryVideo(id, event) {
             event.stopPropagation(); // מנע מהלחיצה על הכרטיס
             
-            const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
-            const session = history.find(s => s.id === id);
-            
-            if (!session) {
-                alert('סשן לא נמצא');
+            if (!videoDatabase) {
+                alert('מסד הנתונים לא זמין');
                 return;
             }
             
-            // בדוק אם יש וידאו (Blob או Base64)
-            if (session.videoBlob) {
-                recordedChunks = [session.videoBlob];
-                console.log('[HISTORY] 🎬 Using videoBlob');
-            } else if (session.videoBase64) {
-                // המר Base64 חזרה ל-Blob
-                const byteCharacters = atob(session.videoBase64.split(',')[1]);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+            console.log('[HISTORY] 🎬 Loading video for session', id);
+            
+            const transaction = videoDatabase.transaction(['videos'], 'readonly');
+            const store = transaction.objectStore('videos');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const result = request.result;
+                if (result && result.videoBlob) {
+                    console.log('[HISTORY] ✅ Video loaded from IndexedDB');
+                    recordedChunks = [result.videoBlob];
+                    viewHistorySession(id); // יעבור לעמוד תוצאות עם וידאו
+                } else {
+                    alert('וידאו לא נמצא');
+                    console.error('[HISTORY] ❌ Video not found in IndexedDB');
                 }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'video/webm' });
-                recordedChunks = [blob];
-                console.log('[HISTORY] 🎬 Converted Base64 to Blob');
-            } else {
-                alert('וידאו לא זמין');
-                return;
-            }
+            };
             
-            console.log('[HISTORY] 🎬 Playing video for session', id);
-            viewHistorySession(id); // יעבור לעמוד תוצאות עם וידאו
+            request.onerror = () => {
+                alert('שגיאה בטעינת וידאו');
+                console.error('[HISTORY] ❌ Failed to load video from IndexedDB');
+            };
         }
         
         function clearOldHistory() {
             if (confirm('למחוק את כל ההיסטוריה? זה יעזור לתקן בעיות עם וידאויים ישנים.')) {
+                // מחק localStorage
                 localStorage.removeItem('oncam-history');
+                
+                // מחק IndexedDB
+                if (videoDatabase) {
+                    const transaction = videoDatabase.transaction(['videos'], 'readwrite');
+                    const store = transaction.objectStore('videos');
+                    store.clear();
+                    console.log('[VIDEO-DB] 🗑️ Cleared all videos');
+                }
+                
                 console.log('[HISTORY] 🗑️ Cleared all history');
                 loadHistory();
             }
