@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 8.0 • אפליקציה מושלמת!</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 9.0 • עם טיפים מקצועיים!</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -112,9 +112,9 @@
                 <span id="live-transcript" style="color: #666;">התמלול יופיע כאן...</span>
             </div>
             
-            <div style="background: #fff3cd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #ffeaa7; font-size: 0.9em;">
-                <strong>🔍 Debug Info:</strong><br>
-                <div id="debug-info" style="color: #856404;">מחכה לדיבור...</div>
+            <div style="background: #e3f2fd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #2196f3;">
+                <strong>💡 טיפ מקצועי:</strong><br>
+                <span id="professional-tip" style="color: #1565c0; font-size: 0.9em;">מחכה להתחלת ההקלטה...</span>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
@@ -165,6 +165,11 @@
                 <span id="result-transcript">התמלול יופיע כאן</span>
             </div>
             
+            <div style="background: #e8f5e8; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #4caf50;">
+                <strong>🎯 טיפ לשיפור הבא:</strong><br>
+                <span id="improvement-tip" style="color: #2e7d32; font-size: 0.9em;">טיפ יופיע כאן...</span>
+            </div>
+            
             <button class="btn btn-success" onclick="downloadCurrentVideo()">💾 שמור וידאו</button>
             <button class="btn btn-secondary" onclick="downloadCurrentReport()">📄 שמור דוח</button>
             <button class="btn btn-primary" onclick="goToCamera()">🔄 אימון נוסף</button>
@@ -183,6 +188,22 @@
         let wordCount = 0;
         let mediaRecorder = null;
         let recordedChunks = [];
+        let tipIndex = 0;
+        let tipInterval = null;
+        
+        // טיפים מקצועיים
+        const professionalTips = [
+            "דבר לאט ובבירור - קצב אידיאלי הוא 120-150 מילים לדקה",
+            "שמור על קשר עין עם המצלמה - היא מייצגת את הקהל שלך",
+            "נשום עמוק לפני התחלה - זה יעזור לך להירגע ולהישמע בטוח יותר",
+            "השתמש בשפת גוף פתוחה - עמוד זקוף עם כתפיים רפויות",
+            "הכן נקודות מפתח מראש - אבל אל תקרא מטקסט מוכן",
+            "עשה הפסקות קטנות בין משפטים - זה נותן זמן לקהל לעכל",
+            "השתמש בידיים כדי להדגיש נקודות חשובות",
+            "דבר מהלב - אותנטיות חשובה יותר משלמות טכנית",
+            "תרגל לפני אירועים חשובים - ככל שתתרגל יותר, תהיה יותר בטוח",
+            "אל תפחד מדממה קלה - היא יכולה להוסיף דרמטיות ולהדגיש נקודות"
+        ];
         
         // ניווט בסיסי
         function show(pageId) {
@@ -220,10 +241,11 @@
             document.getElementById('start-btn').onclick = startBasicRecording;
             document.getElementById('live-transcript').textContent = 'התמלול יופיע כאן...';
             document.getElementById('live-transcript').style.color = '#666';
-            document.getElementById('debug-info').textContent = 'מחכה לדיבור...';
+            document.getElementById('professional-tip').textContent = 'מחכה להתחלת ההקלטה...';
             startTime = null;
             transcript = '';
             wordCount = 0;
+            tipIndex = 0;
         }
         
         function goToHistory() {
@@ -266,6 +288,9 @@
             // התחל זיהוי דיבור
             startSpeechRecognition();
             
+            // התחל החלפת טיפים
+            startTipsRotation();
+            
             // התחל הקלטת וידאו
             if (stream) {
                 try {
@@ -287,6 +312,64 @@
             }
         }
         
+        // הרצת טיפים מקצועיים במהלך ההקלטה
+        function startTipsRotation() {
+            showNextTip(); // הצג טיפ ראשון מיד
+            
+            // החלף טיפ כל 8 שניות
+            tipInterval = setInterval(() => {
+                if (startTime) { // רק אם עדיין מקליטים
+                    showNextTip();
+                }
+            }, 8000);
+        }
+        
+        function showNextTip() {
+            const tipElement = document.getElementById('professional-tip');
+            tipElement.textContent = professionalTips[tipIndex];
+            tipIndex = (tipIndex + 1) % professionalTips.length;
+        }
+        
+        function showImprovementTip(score, wpm, wordCount, elapsed) {
+            let tip = '';
+            
+            // טיפים מבוססי WPM
+            if (wpm === 0) {
+                tip = 'לא זוהה דיבור - דבר קרוב יותר למיקרופון ובקול ברור יותר';
+            } else if (wpm < 80) {
+                tip = 'קצב הדיבור איטי מדי - נסה לדבר מעט יותר מהר ובביטחון';
+            } else if (wpm > 200) {
+                tip = 'קצב הדיבור מהיר מדי - האט קצת כדי שהקהל יוכל לעקוב';
+            } else if (wpm >= 120 && wpm <= 150) {
+                tip = 'קצב דיבור מעולה! המשך לשמור על הקצב הזה';
+            }
+            
+            // טיפים מבוססי כמות מילים
+            else if (wordCount < 10) {
+                tip = 'נסה לדבר יותר - פתח נושא ופרט עליו במשך דקה-שתיים';
+            } else if (wordCount >= 50) {
+                tip = 'כמות מילים מצוינת! עכשיו התמקד בבירור ובמשמעות';
+            }
+            
+            // טיפים מבוססי זמן
+            else if (elapsed < 15) {
+                tip = 'נסה לתרגל אימונים ארוכים יותר - לפחות דקה מלאה';
+            } else if (elapsed >= 60) {
+                tip = 'אימון ארוך מצוין! זה בונה סיבולת ובטחון בדיבור';
+            }
+            
+            // טיפים מבוססי ציון כללי
+            else if (score >= 80) {
+                tip = 'ביצועים מצוינים! התמקד עכשיו בשפת גוף וקשר עין';
+            } else if (score >= 60) {
+                tip = 'ביצועים טובים! נסה להוסיף הבעות פנים ותנועות ידיים';
+            } else {
+                tip = 'המשך להתרגל - כל אימון משפר את הביצועים שלך!';
+            }
+            
+            document.getElementById('improvement-tip').textContent = tip;
+        }
+        
         function stopBasicRecording() {
             console.log('[REC] Stopping...');
             
@@ -294,6 +377,12 @@
             if (recognition) {
                 recognition.stop();
                 recognition = null;
+            }
+            
+            // עצור החלפת טיפים
+            if (tipInterval) {
+                clearInterval(tipInterval);
+                tipInterval = null;
             }
             
             // עצור הקלטת וידאו
@@ -335,6 +424,9 @@
             document.getElementById('result-time').textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
             document.getElementById('result-rating').textContent = rating;
             document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
+            
+            // הצג טיפ מותאם לביצועים
+            showImprovementTip(score, wpm, wordCount, elapsed);
             
             show('results-page');
             
