@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OnCam Coach - Clean</title>
+    <title>OnCam Coach</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -56,155 +56,1333 @@
         }
         .page { display: none; }
         .page.active { display: block; }
-        
-        /* מצלמה */
-        #video-container { 
-            position: relative; 
-            background: #000; 
-            border-radius: 15px; 
-            overflow: hidden; 
-            margin-bottom: 20px; 
-        }
         #video { 
             width: 100%; 
-            display: block; 
-            min-height: 250px; 
+            height: 300px; 
+            background: #000; 
+            border-radius: 15px; 
+            margin: 20px 0;
         }
-        #status { 
-            position: absolute; 
-            top: 15px; 
-            left: 15px; 
-            background: rgba(0,0,0,0.8); 
-            color: white; 
-            padding: 8px 12px; 
-            border-radius: 10px; 
-            font-size: 1.1em; 
-            font-weight: bold; 
+        .version { 
+            text-align: center; 
+            color: #999; 
+            font-size: 0.8em; 
+            margin-bottom: 20px; 
         }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- עמוד בית -->
-        <div id="home-page" class="page active">
+        <div id="home" class="page active">
             <h1>🎤 OnCam Coach</h1>
             <div class="subtitle">
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.0 • חדש ונקי</p>
+            <p class="version">גרסה 6.4 • תיקון שגיאות JS</p>
             
-            <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
-            <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
+            <button class="btn btn-primary" onclick="goToCamera()">
+                🚀 התחל אימון חדש
+            </button>
+            <button class="btn btn-secondary" onclick="goToHistory()">
+                📊 היסטוריית אימונים
+            </button>
         </div>
 
         <!-- עמוד מצלמה -->
-        <div id="camera-page" class="page">
+        <div id="camera" class="page">
             <h1>🎬 הקלטה</h1>
             
-            <div id="video-container">
-                <video id="video" autoplay muted></video>
-                <div id="status">מוכן</div>
+            <div id="tips-box" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #dee2e6; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2em; display: flex; align-items: center; justify-content: center;">
+                    <span style="margin-left: 10px; font-size: 1.1em;">🎬</span> טיפים להקלטה מוצלחת
+                </h3>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">🎯</span>
+                    דברו בקצב נעים. לא צריך לרוץ, וגם לא להאט. פשוט לדבר.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">👁️</span>
+                    הסתכלו למצלמה, כאילו מישהו יושב מולכם ומקשיב רק לכם.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">🎤</span>
+                    דברו ברור, עם נימה של נחישות ואופטימיות. כך המסר עובר טוב יותר.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">💡</span>
+                    תנו לפנים להשתתף בדיבור ודאגו שהן יהיו מוארות. אור טוב משפר את איכות הצילום והנוכחות.
+                </div>
+                <div style="margin-bottom: 0; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">💪</span>
+                    דברו לפחות חצי דקה רצופה, כדי להיכנס לזרימה.
+                </div>
             </div>
             
-            <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
-            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
+            <div style="position: relative;">
+                <video id="video" autoplay muted></video>
+                <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
+                <div id="word-count" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">0 מילים</div>
+                <div id="eye-indicator" style="position: absolute; bottom: 15px; left: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 1em; font-weight: bold; display: none;">👁️ טוב</div>
+            </div>
+            
+            <div id="transcript-box" style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; min-height: 80px; border: 2px solid #e9ecef;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">תמלול:</div>
+                <div id="transcript-text" style="color: #999;">התמלול יופיע כאן...</div>
+            </div>
+            
+            <button id="start-btn" class="btn btn-primary" onclick="startRecording()">
+                ⏺️ התחל הקלטה
+            </button>
+            <button id="stop-btn" class="btn btn-secondary" onclick="stopRecording()" style="display: none;">
+                ⏹️ עצור הקלטה
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
+                🏠 חזור לבית
+            </button>
         </div>
 
         <!-- עמוד היסטוריה -->
-        <div id="history-page" class="page">
+        <div id="history" class="page">
             <h1>📊 היסטוריה</h1>
-            <div style="text-align: center; padding: 60px 20px; color: #999;">
-                <div style="font-size: 3em; margin-bottom: 20px;">📭</div>
-                <div>אין אימונים שמורים עדיין</div>
+            <div id="history-list">
+                <!-- התוכן ימולא דינמית -->
             </div>
-            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
+            <button class="btn btn-secondary" onclick="clearOldHistory()" style="background: #dc3545; margin-bottom: 10px;">
+                🗑️ נקה היסטוריה ישנה
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
+                🏠 חזור לבית
+            </button>
+        </div>
+
+        <!-- עמוד תוצאות -->
+        <div id="results" class="page">
+            <h1>🏆 תוצאות</h1>
+            
+            <!-- נגן וידאו -->
+            <div id="video-player-container" style="margin: 20px 0; display: none;">
+                <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; text-align: center;">
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">🎬 הקלטה שלך:</div>
+                    <video id="result-video" controls style="width: 100%; max-height: 250px; border-radius: 10px; background: #000;">
+                        הדפדפן שלך לא תומך בנגן וידאו
+                    </video>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <span id="video-size">גודל: חישוב...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="video-player-container" style="margin: 20px 0; display: none;">
+                <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; text-align: center;">
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">🎬 הקלטה שלך:</div>
+                    <video id="result-video" controls style="width: 100%; max-height: 250px; border-radius: 10px; background: #000;">
+                        הדפדפן שלך לא תומך בנגן וידאו
+                    </video>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <span id="video-size">גודל: חישוב...</span>
+                    </div>
+                    <button id="video-fallback-btn" onclick="downloadVideo()" style="display: none; margin-top: 10px; padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 0.9em;">
+                        💾 הורד וידאו במקום
+                    </button>
+                </div>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 20px 0;">
+                <div style="font-size: 1.2em; margin-bottom: 10px;">ציון כללי</div>
+                <div id="final-score" style="font-size: 3.5em; font-weight: 800; margin: 10px 0;">0</div>
+                <div style="margin-top: 5px;">מתוך 100</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">מילים לדקה</div>
+                    <div id="result-wpm" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">סה"כ מילים</div>
+                    <div id="result-words" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">זמן</div>
+                    <div id="result-time" style="font-size: 2em; font-weight: 700; color: #667eea; margin: 8px 0;">0:00</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">קשר עין</div>
+                    <div id="result-rating" style="font-size: 1.5em; font-weight: 700; color: #667eea; margin: 8px 0;">-</div>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; border: 2px solid #e9ecef;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">💬 סיכום:</div>
+                <div id="summary-text" style="color: #555; line-height: 1.6;"></div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin: 20px 0; border: 2px solid #e9ecef; max-height: 150px; overflow-y: auto;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">תמלול מלא:</div>
+                <div id="result-transcript" style="color: #555;"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="goToCamera()">
+                🔄 אימון נוסף
+            </button>
+            <button class="btn btn-success" onclick="downloadVideo()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-top: 10px;">
+                💾 שמור וידאו לגלריה
+            </button>
+            <button class="btn btn-success" onclick="downloadReport()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-top: 10px;">
+                📄 שמור דוח תוצאות
+            </button>
+            <button class="btn btn-secondary" onclick="goHome()">
+                🏠 חזור לבית
+            </button>
         </div>
     </div>
 
     <script>
-        console.log('🚀 OnCam Coach v7.0 loading...');
+        // פתיחת IndexedDB לשמירת וידאויים
+        let videoDatabase = null;
         
-        // משתנים
-        let stream = null;
+        function openVideoDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('OnCamCoachVideos', 1);
+                
+                request.onerror = () => {
+                    console.error('[VIDEO-DB] Failed to open database');
+                    reject(request.error);
+                };
+                
+                request.onsuccess = () => {
+                    videoDatabase = request.result;
+                    console.log('[VIDEO-DB] ✅ Database opened');
+                    resolve(videoDatabase);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('videos')) {
+                        const store = db.createObjectStore('videos', { keyPath: 'sessionId' });
+                        console.log('[VIDEO-DB] Created videos store');
+                    }
+                };
+            });
+        }
         
-        // ניווט בסיסי
+        // פתח את ה-database בהתחלה (עם הגנה)
+        setTimeout(() => {
+            openVideoDatabase().catch(err => {
+                console.error('[VIDEO-DB] Init failed:', err);
+                console.log('[VIDEO-DB] ⚠️ App will work without video storage');
+            });
+        }, 100);
+        let timerInterval = null;
+        let eyeCheckInterval = null;
+        let recognition = null;
+        let transcript = '';
+        let wordCount = 0;
+        let eyeScore = 100;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        
         function show(pageId) {
-            console.log('[NAV] Switching to:', pageId);
-            
+            // הסתר את כל הדפים
             const pages = document.querySelectorAll('.page');
             pages.forEach(page => page.classList.remove('active'));
             
-            const target = document.getElementById(pageId);
-            if (target) {
-                target.classList.add('active');
-                console.log('[NAV] ✅ Success');
+            // הצג את הדף הנבחר
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                console.log('[APP] ✅ Switched to page:', pageId);
             } else {
-                console.error('[NAV] ❌ Page not found:', pageId);
+                console.error('[APP] ❌ Page not found:', pageId);
             }
         }
         
         function goHome() {
             console.log('[APP] Going home');
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
+            
+            // עצור הקלטה אם רצה
+            if (startTime) {
+                // עצור הכל
+                if (timerInterval) clearInterval(timerInterval);
+                if (eyeCheckInterval) clearInterval(eyeCheckInterval);
+                if (recognition) recognition.stop();
+                
+                startTime = null;
+                timerInterval = null;
+                eyeCheckInterval = null;
+                recognition = null;
+                
+                document.getElementById('eye-indicator').style.display = 'none';
             }
-            show('home-page');
+            
+            show('home-page');  // תיקון!
         }
         
         function goToCamera() {
-            console.log('[APP] Going to camera');
-            show('camera-page');
-            setupCamera();
+            console.log('[APP] 📹 Going to camera...');
+            
+            try {
+                show('camera-page');
+                console.log('[APP] ✅ Camera page shown');
+                
+                // בקש גישה למצלמה
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: true 
+                })
+                .then(stream => {
+                    console.log('[CAMERA] ✅ Access granted');
+                    const video = document.getElementById('video');
+                    if (video) {
+                        video.srcObject = stream;
+                        window.currentStream = stream;
+                    } else {
+                        console.error('[CAMERA] ❌ Video element not found');
+                    }
+                })
+                .catch(error => {
+                    console.error('[CAMERA] ❌ Error:', error);
+                    alert('לא ניתן לגשת למצלמה: ' + error.message);
+                });
+            } catch (error) {
+                console.error('[APP] ❌ Error in goToCamera:', error);
+            }
         }
         
         function goToHistory() {
             console.log('[APP] Going to history');
-            show('history-page');
+            loadHistory();
+            show('history-page');  // תיקון!
         }
         
-        // מצלמה פשוטה
-        async function setupCamera() {
-            console.log('[CAMERA] Setting up...');
-            document.getElementById('status').textContent = 'מבקש הרשאה...';
+        function saveToHistory(score, wpm, words, time, eyeRating, summary) {
+            const sessionId = Date.now();
             
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' }, 
-                    audio: true 
+            // שמירת מטא-דאטה ב-localStorage
+            let history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+            const session = {
+                id: sessionId,
+                date: new Date().toLocaleString('he-IL', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }),
+                score: score,
+                wpm: wpm,
+                words: words,
+                time: time,
+                eyeRating: eyeRating,
+                summary: summary,
+                transcript: transcript,
+                hasVideo: recordedChunks.length > 0  // סימון שיש וידאו
+            };
+            
+            history.unshift(session);
+            if (history.length > 5) history = history.slice(0, 5);
+            localStorage.setItem('oncam-history', JSON.stringify(history));
+            console.log('[HISTORY] ✅ Saved session metadata');
+            
+            // שמירת וידאו ב-IndexedDB (אם יש)
+            if (recordedChunks.length > 0 && videoDatabase) {
+                const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+                console.log(`[VIDEO-DB] 💾 Saving video: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+                
+                const transaction = videoDatabase.transaction(['videos'], 'readwrite');
+                const store = transaction.objectStore('videos');
+                
+                store.add({
+                    sessionId: sessionId,
+                    videoBlob: videoBlob,
+                    timestamp: Date.now()
                 });
                 
-                document.getElementById('video').srcObject = stream;
-                document.getElementById('status').textContent = 'מוכן';
-                console.log('[CAMERA] ✅ Ready');
+                transaction.onsuccess = () => {
+                    console.log('[VIDEO-DB] ✅ Video saved successfully');
+                };
                 
-            } catch (error) {
-                console.error('[CAMERA] ❌ Error:', error);
-                document.getElementById('status').textContent = 'שגיאה';
-                alert('לא ניתן לגשת למצלמה: ' + error.message);
+                transaction.onerror = (err) => {
+                    console.error('[VIDEO-DB] ❌ Failed to save video:', err);
+                };
             }
         }
         
-        // הקלטה פשוטה
-        function startBasicRecording() {
-            console.log('[REC] Starting basic recording...');
-            document.getElementById('status').textContent = 'מקליט...';
-            document.getElementById('start-btn').textContent = '⏹️ עצור הקלטה';
-            document.getElementById('start-btn').onclick = stopBasicRecording;
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+            const list = document.getElementById('history-list');
+            
+            console.log('[HISTORY] 📂 Loading history... Found:', history.length, 'sessions');
+            
+            // DEBUG - הדפס את כל ההיסטוריה
+            history.forEach((session, i) => {
+                console.log(`[HISTORY] Session ${i}:`, {
+                    id: session.id,
+                    date: session.date,
+                    hasVideoBlob: !!session.videoBlob,
+                    hasVideoBase64: !!session.videoBase64,
+                    base64Length: session.videoBase64 ? session.videoBase64.length : 0
+                });
+            });
+            
+            if (history.length === 0) {
+                list.innerHTML = '<div style="text-align: center; padding: 50px; color: #999;"><div style="font-size: 3em; margin-bottom: 20px;">📭</div><div style="font-size: 1.2em; margin-bottom: 10px;">אין אימונים שמורים</div><div style="font-size: 0.9em;">הרץ אימון ראשון כדי להתחיל!</div></div>';
+                return;
+            }
+            
+            list.innerHTML = history.map(session => {
+                const hasVideo = session.hasVideo === true;
+                const videoIcon = hasVideo ? ' 🎥' : '';
+                
+                // DEBUG - בואו נראה מה קורה
+                console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}`);
+                
+                return `
+                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                        <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
+                        
+                        <div style="text-align: right;" onclick="viewHistorySession(${session.id})">
+                            <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}${videoIcon}</div>
+                            <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">${session.wpm} WPM · ${session.words} מילים · ${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}</div>
+                            <div style="color: #666; font-size: 0.9em;">קשר עין: ${session.eyeRating}</div>
+                        </div>
+                        
+                        <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
+                        
+                        ${hasVideo ? `
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                                <video id="history-video-${session.id}" controls style="width: 100%; max-height: 150px; border-radius: 10px; background: #000; margin-bottom: 10px; display: none;">
+                                    הדפדפן לא תומך בוידאו
+                                </video>
+                                <div style="text-align: center;">
+                                    <button id="show-video-${session.id}" onclick="loadHistoryVideo(${session.id}); event.stopPropagation();" style="
+                                        background: #667eea; 
+                                        color: white; 
+                                        border: none; 
+                                        border-radius: 15px; 
+                                        padding: 8px 16px; 
+                                        font-size: 0.9em; 
+                                        cursor: pointer;
+                                        margin: 0 5px;
+                                    ">🎬 הצג וידאו</button>
+                                    <button onclick="downloadHistoryVideo(${session.id}); event.stopPropagation();" style="
+                                        background: #28a745; 
+                                        color: white; 
+                                        border: none; 
+                                        border-radius: 15px; 
+                                        padding: 8px 16px; 
+                                        font-size: 0.9em; 
+                                        cursor: pointer;
+                                        margin: 0 5px;
+                                    ">💾 הורד</button>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('[HISTORY] ✅ Loaded', history.length, 'sessions');
         }
         
-        function stopBasicRecording() {
-            console.log('[REC] Stopping...');
-            document.getElementById('status').textContent = 'מוכן';
-            document.getElementById('start-btn').textContent = '⏺️ התחל הקלטה';
-            document.getElementById('start-btn').onclick = startBasicRecording;
+        function deleteHistorySession(id, event) {
+            event.stopPropagation();  // מנע מהלחיצה על הכרטיס
+            
+            if (!confirm('למחוק אימון זה?')) return;
+            
+            let history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+            history = history.filter(s => s.id !== id);
+            localStorage.setItem('oncam-history', JSON.stringify(history));
+            
+            console.log('[HISTORY] 🗑️ Deleted session', id);
+            loadHistory();
         }
         
-        // טוען בהצלחה
-        window.onload = function() {
-            console.log('✅ OnCam Coach v7.0 loaded successfully');
-        };
+        function viewHistorySession(id) {
+            const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+            const session = history.find(s => s.id === id);
+            
+            if (!session) return;
+            
+            console.log('[HISTORY] 👁️ Viewing session', id, 'hasVideo:', !!session.videoBlob);
+            
+            // הגדר recordedChunks לוידאו הישן (אם יש)
+            if (session.videoBlob && session.videoBlob.size > 0) {
+                recordedChunks = [session.videoBlob];
+                console.log('[HISTORY] 👁️ Using videoBlob');
+            } else if (session.videoBase64) {
+                // המר Base64 חזרה ל-Blob
+                try {
+                    const byteCharacters = atob(session.videoBase64.split(',')[1]);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'video/webm' });
+                    recordedChunks = [blob];
+                    console.log('[HISTORY] 👁️ Converted Base64 to Blob');
+                } catch (err) {
+                    console.error('[HISTORY] ❌ Failed to convert Base64:', err);
+                    recordedChunks = [];
+                }
+            } else {
+                recordedChunks = [];
+                console.log('[HISTORY] 👁️ No video data');
+            }
+            
+            // הצג את התוצאות הישנות
+            document.getElementById('final-score').textContent = session.score;
+            document.getElementById('result-wpm').textContent = session.wpm;
+            document.getElementById('result-words').textContent = session.words;
+            document.getElementById('result-time').textContent = `${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}`;
+            document.getElementById('result-rating').textContent = session.eyeRating;
+            document.getElementById('summary-text').textContent = session.summary;
+            document.getElementById('result-transcript').textContent = session.transcript || 'אין תמלול';
+            
+            // הגדר נגן וידאו
+            setupVideoPlayer();
+            
+            show('results-page');
+        }
+        
+        function startRecording() {
+            console.log('[RECORDING] Starting...');
+            
+            // איפוס נתונים
+            transcript = '';
+            wordCount = 0;
+            eyeScore = 100;
+            recordedChunks = [];
+            document.getElementById('transcript-text').textContent = 'מקליט...';
+            document.getElementById('transcript-text').style.color = '#333';
+            document.getElementById('word-count').textContent = '0 מילים';
+            document.getElementById('eye-indicator').style.display = 'block';
+            
+            // הסתר טיפים
+            document.getElementById('tips-box').style.display = 'none';
+            
+            startTime = Date.now();
+            
+            // החלף כפתורים
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            
+            // התחל טיימר
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // התחל בדיקת קשר עין
+            eyeCheckInterval = setInterval(checkEyeContact, 3000);
+            
+            // התחל הקלטת וידאו
+            startVideoRecording();
+            
+            // התחל זיהוי דיבור
+            startSpeechRecognition();
+            
+            console.log('[RECORDING] ✅ Started successfully');
+        }
+        
+        function stopRecording() {
+            console.log('[RECORDING] Stopping...');
+            
+            // עצור טיימר
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            // עצור בדיקת קשר עין
+            if (eyeCheckInterval) {
+                clearInterval(eyeCheckInterval);
+                eyeCheckInterval = null;
+            }
+            document.getElementById('eye-indicator').style.display = 'none';
+            
+            // עצור הקלטת וידאו
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                console.log('[VIDEO] ⏹️ Stopped recording');
+            }
+            
+            // עצור זיהוי דיבור
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
+            
+            const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+            const mins = elapsed / 60;
+            const wpm = mins > 0 ? Math.round(wordCount / mins) : 0;
+            
+            startTime = null;
+            
+            // החלף כפתורים
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+            
+            // הצג טיפים מחדש
+            document.getElementById('tips-box').style.display = 'block';
+            
+            // חישוב ציון
+            const score = calculateScore(wpm, wordCount, elapsed, eyeScore);
+            const rating = getSimpleRating(score);
+            const summary = generateSimpleSummary(wpm, wordCount, elapsed, eyeScore);
+            const eyeRating = getEyeRating(eyeScore);
+            
+            // הצג תוצאות
+            showResults(score, wpm, wordCount, elapsed, rating, summary, eyeRating);
+            
+            console.log('[RECORDING] ✅ Stopped - Duration:', elapsed, 'Words:', wordCount, 'WPM:', wpm);
+        }
+        
+        function calculateScore(wpm, words, time, eyeScore) {
+            let score = 0;
+            
+            // ציון לקצב (40 נקודות)
+            if (wpm >= 120 && wpm <= 180) score += 40;
+            else if (wpm >= 100 && wpm < 120) score += 32;
+            else if (wpm >= 80 && wpm < 100) score += 24;
+            else if (wpm >= 60 && wpm < 80) score += 16;
+            else if (wpm > 0) score += 8;
+            
+            // ציון לכמות מילים (25 נקודות)
+            if (words >= 100) score += 25;
+            else if (words >= 50) score += 20;
+            else if (words >= 25) score += 12;
+            else if (words >= 10) score += 8;
+            else if (words > 0) score += 4;
+            
+            // ציון לאורך זמן (15 נקודות)
+            if (time >= 60) score += 15;
+            else if (time >= 30) score += 12;
+            else if (time >= 15) score += 8;
+            else if (time >= 5) score += 4;
+            
+            // ציון לקשר עין (20 נקודות)
+            const eyePoints = Math.round((eyeScore / 100) * 20);
+            score += eyePoints;
+            
+            return Math.min(100, score);
+        }
+        
+        function getSimpleRating(score) {
+            if (score >= 90) return 'מצוין! ⭐⭐⭐';
+            else if (score >= 75) return 'טוב מאוד! ⭐⭐';
+            else if (score >= 60) return 'טוב! ⭐';
+            else if (score >= 40) return 'בסדר 👌';
+            else return 'צריך תרגול 💪';
+        }
+        
+        function generateSimpleSummary(wpm, words, time, eyeScore) {
+            const parts = [];
+            
+            if (wpm >= 120 && wpm <= 180) {
+                parts.push('קצב דיבור מצוין');
+            } else if (wpm > 180) {
+                parts.push('דיברת מהר מדי - כדאי להאט');
+            } else if (wpm < 100 && wpm > 0) {
+                parts.push('קצב איטי - כדאי להאיץ מעט');
+            }
+            
+            if (words >= 50) {
+                parts.push('כמות מילים טובה');
+            } else if (words < 20) {
+                parts.push('נסה לדבר יותר בפעם הבאה');
+            }
+            
+            if (time >= 60) {
+                parts.push('אורך זמן מצוין');
+            } else if (time < 30) {
+                parts.push('אימון קצר - נסה זמן יותר ארוך');
+            }
+            
+            if (eyeScore >= 80) {
+                parts.push('תאורה וקשר עין טובים');
+            } else if (eyeScore >= 60) {
+                parts.push('תאורה בינונית - ניתן לשפר');
+            } else {
+                parts.push('תאורה חלשה - כדאי לשפר התאורה');
+            }
+            
+            return parts.length > 0 ? parts.join(', ') + '.' : 'המשך להתאמן!';
+        }
+        
+        function getEyeRating(eyeScore) {
+            if (eyeScore >= 90) return 'מצוין ✨';
+            else if (eyeScore >= 75) return 'טוב 👍';
+            else if (eyeScore >= 60) return 'בסדר 👌';
+            else return 'צריך שיפור 💡';
+        }
+        
+        function showResults(score, wpm, words, time, rating, summary, eyeRating) {
+            // שמירה בהיסטוריה
+            saveToHistory(score, wpm, words, time, eyeRating, summary);
+            
+            // מלא את הנתונים
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('result-wpm').textContent = wpm;
+            document.getElementById('result-words').textContent = words;
+            document.getElementById('result-time').textContent = `${Math.floor(time/60)}:${String(time%60).padStart(2,'0')}`;
+            document.getElementById('result-rating').textContent = eyeRating;
+            document.getElementById('summary-text').textContent = summary;
+            document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
+            
+            // הצג נגן וידאו אם יש וידאו
+            setupVideoPlayer();
+            
+            // עבור לעמוד תוצאות
+            show('results-page');
+        }
+        
+        function setupVideoPlayer() {
+            const container = document.getElementById('video-player-container');
+            const video = document.getElementById('result-video');
+            const sizeDiv = document.getElementById('video-size');
+            
+            if (recordedChunks.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                video.src = url;
+                video.load();
+                
+                const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+                sizeDiv.textContent = `גודל: ${sizeMB} MB`;
+                
+                container.style.display = 'block';
+                
+                console.log(`[VIDEO-PLAYER] ✅ Setup complete - ${sizeMB} MB`);
+                
+                // ניקוי אחרי 30 שניות
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+                
+            } catch (error) {
+                console.error('[VIDEO-PLAYER] ❌ Error:', error);
+                container.style.display = 'none';
+            }
+        }
+        
+        function updateTimer() {
+            if (!startTime) return;
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            
+            document.getElementById('timer').textContent = 
+                `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        }
+        
+        function checkEyeContact() {
+            const video = document.getElementById('video');
+            const indicator = document.getElementById('eye-indicator');
+            
+            if (!video.videoWidth) return;
+            
+            try {
+                // צילום פריים קטן לבדיקת בהירות
+                const canvas = document.createElement('canvas');
+                canvas.width = 60;
+                canvas.height = 45;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // חישוב בהירות ממוצעת
+                let totalBrightness = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    totalBrightness += brightness;
+                }
+                const avgBrightness = totalBrightness / (data.length / 4);
+                
+                // בדיקת איכות תאורה ומיקום
+                if (avgBrightness < 60) {
+                    // תאורה חלשה
+                    eyeScore = Math.max(0, eyeScore - 5);
+                    indicator.textContent = '💡 אור חלש';
+                    indicator.style.background = 'rgba(255, 152, 0, 0.9)';
+                } else if (avgBrightness < 80) {
+                    // תאורה בינונית
+                    indicator.textContent = '👁️ בסדר';
+                    indicator.style.background = 'rgba(255, 193, 7, 0.9)';
+                } else {
+                    // תאורה טובה
+                    eyeScore = Math.min(100, eyeScore + 1);
+                    indicator.textContent = '✅ מצוין';
+                    indicator.style.background = 'rgba(76, 175, 80, 0.9)';
+                }
+                
+                console.log(`[EYE] Brightness: ${avgBrightness.toFixed(1)}, Score: ${eyeScore}`);
+                
+            } catch (error) {
+                console.error('[EYE] Error:', error);
+                indicator.textContent = '👁️ בדיקה';
+                indicator.style.background = 'rgba(108, 117, 125, 0.9)';
+            }
+        }
+        
+        function startSpeechRecognition() {
+            // בדוק תמיכה
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                console.error('[SPEECH] Not supported');
+                document.getElementById('transcript-text').textContent = 'זיהוי דיבור לא נתמך בדפדפן זה';
+                document.getElementById('transcript-text').style.color = '#e74c3c';
+                return;
+            }
+            
+            recognition = new SpeechRecognition();
+            
+            // הגדרות פשוטות - עובד טוב באייפון
+            recognition.lang = 'he-IL';
+            recognition.continuous = false;  // שינוי קריטי!
+            recognition.interimResults = true;
+            
+            let restartCount = 0;
+            let lastResultTime = Date.now();
+            let forceRestartTimer = null;
+            
+            recognition.onstart = () => {
+                console.log('[SPEECH] ✅ Started, restart count:', restartCount);
+                lastResultTime = Date.now();
+                
+                // אם אין תגובה תוך 3 שניות - restart בכוח (מהיר יותר!)
+                forceRestartTimer = setTimeout(() => {
+                    console.log('[SPEECH] ⚠️ No response for 3s - forcing restart');
+                    if (recognition && startTime) {
+                        try {
+                            recognition.stop();
+                            // התחל מיד מחדש
+                            setTimeout(() => {
+                                if (startTime) {
+                                    restartCount++;
+                                    console.log('[SPEECH] 🔄 Force restart attempt:', restartCount);
+                                    recognition.start();
+                                }
+                            }, 100);
+                        } catch (e) {
+                            console.log('[SPEECH] Stop error during force restart:', e);
+                        }
+                    }
+                }, 3000);  // 3 שניות במקום 5
+            };
+            
+            recognition.onresult = (event) => {
+                lastResultTime = Date.now();
+                
+                // בטל את force restart timer כי יש תגובה
+                if (forceRestartTimer) {
+                    clearTimeout(forceRestartTimer);
+                    forceRestartTimer = null;
+                }
+                
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const text = result[0].transcript;
+                    
+                    if (result.isFinal) {
+                        finalTranscript += text + ' ';
+                        console.log('[SPEECH] 📝 Final:', text.trim());
+                    } else {
+                        interimTranscript += text;
+                        console.log('[SPEECH] 🔤 Interim:', text.trim());
+                    }
+                }
+                
+                if (finalTranscript) {
+                    transcript += finalTranscript;
+                    wordCount = transcript.trim().split(/\s+/).filter(word => word.length > 0).length;
+                    
+                    document.getElementById('word-count').textContent = `${wordCount} מילים`;
+                    console.log('[SPEECH] 📊 Total words:', wordCount);
+                }
+                
+                // הצג תמלול (קבוע + זמני)
+                const displayText = transcript + interimTranscript;
+                document.getElementById('transcript-text').textContent = displayText || 'מקליט...';
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('[SPEECH] Error:', event.error);
+                
+                if (event.error === 'not-allowed') {
+                    document.getElementById('transcript-text').textContent = 'נדרשת הרשאה למיקרופון';
+                    document.getElementById('transcript-text').style.color = '#e74c3c';
+                } else if (event.error === 'network') {
+                    console.log('[SPEECH] Network error - will restart');
+                    // רק נמשיך, ה-onend יטפל בזה
+                } else {
+                    console.log('[SPEECH] Other error:', event.error, '- will restart');
+                }
+            };
+            
+            recognition.onend = () => {
+                const timeSinceStart = Date.now() - lastResultTime;
+                console.log('[SPEECH] Ended, restarting immediately...');
+                
+                if (startTime && restartCount < 50) { // עוד יותר ניסיונות
+                    restartCount++;
+                    
+                    // restart מיידי - בלי המתנה!
+                    try {
+                        if (recognition && startTime) {
+                            recognition.start();
+                        }
+                    } catch (error) {
+                        // אם נכשל, נסה אחרי 100ms בלבד
+                        setTimeout(() => {
+                            if (startTime) recognition.start();
+                        }, 100);
+                    }
+                } else {
+                    console.log('[SPEECH] Stopped restarting');
+                }
+            };
+            
+            // התחל עם 5 ניסיונות מיידיים במקביל!
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    try {
+                        if (startTime) {
+                            recognition.start();
+                            console.log(`[SPEECH] 🎤 Start attempt ${i + 1}/5`);
+                        }
+                    } catch (error) {
+                        console.log(`[SPEECH] Start attempt ${i + 1} failed:`, error);
+                    }
+                }, i * 200); // כל 200ms
+            }
+        }
+        
+        console.log('[APP] OnCam Coach v3.1 loaded');
+        
+        function startVideoRecording() {
+            const video = document.getElementById('video');
+            const stream = video.srcObject;
+            
+            if (!stream) {
+                console.error('[VIDEO] ❌ No stream available');
+                return;
+            }
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp8,opus',
+                    videoBitsPerSecond: 800000  // 800 Kbps - איכות בינונית לחיסכון בזיכרון
+                });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                        console.log(`[VIDEO] 📦 Chunk ${recordedChunks.length}: ${(event.data.size / 1024).toFixed(1)} KB`);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    console.log('[VIDEO] ✅ Recording stopped, total chunks:', recordedChunks.length);
+                };
+                
+                mediaRecorder.start(2000); // chunk כל 2 שניות
+                console.log('[VIDEO] 📹 Recording started');
+                
+            } catch (error) {
+                console.error('[VIDEO] ❌ Failed to start recording:', error);
+            }
+        }
+        
+        function downloadVideo() {
+            if (recordedChunks.length === 0) {
+                alert('אין וידאו זמין להורדה');
+                return;
+            }
+            
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `oncam-coach-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            console.log('[VIDEO] 💾 Downloaded');
+        }
+        
+        function setupVideoPlayer() {
+            const container = document.getElementById('video-player-container');
+            const video = document.getElementById('result-video');
+            const sizeDiv = document.getElementById('video-size');
+            
+            if (recordedChunks.length === 0) {
+                // אין וידאו
+                container.style.display = 'none';
+                console.log('[VIDEO-PLAYER] ❌ No video to show');
+                return;
+            }
+            
+            try {
+                // יצירת blob מהוידאו
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                
+                // תיקון לאייפון - וידבא שזה WebM תקין
+                console.log('[VIDEO-PLAYER] 📹 Blob type:', blob.type, 'Size:', blob.size);
+                
+                // ניסיון עם FileReader (יותר יציב באייפון)
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    video.src = e.target.result;
+                    video.load(); // כפה טעינה מחדש
+                    console.log('[VIDEO-PLAYER] ✅ Video loaded via FileReader');
+                };
+                
+                // גיבוי עם URL.createObjectURL
+                reader.onerror = function() {
+                    console.warn('[VIDEO-PLAYER] ⚠️ FileReader failed, trying createObjectURL');
+                    const url = URL.createObjectURL(blob);
+                    video.src = url;
+                    video.load();
+                    
+                    // ניקוי URL אחרי 30 שניות
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                };
+                
+                // התחל עם FileReader
+                reader.readAsDataURL(blob);
+                
+                // הגדרות נוספות לאייפון
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.preload = 'metadata';
+                
+                // חישוב גודל
+                const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+                sizeDiv.textContent = `גודל: ${sizeMB} MB`;
+                
+                // הצגת הנגן
+                container.style.display = 'block';
+                
+                // טיפול בשגיאות
+                video.onerror = function(e) {
+                    console.error('[VIDEO-PLAYER] ❌ Video error:', e);
+                    sizeDiv.textContent = `גודל: ${sizeMB} MB`;
+                    // הסתר את הנגן והצג כפתור הורדה
+                    video.style.display = 'none';
+                    document.getElementById('video-fallback-btn').style.display = 'block';
+                    sizeDiv.innerHTML = `גודל: ${sizeMB} MB<br><span style="color: #e74c3c;">נגן לא עובד - השתמש בכפתור למטה</span>`;
+                };
+                
+                video.onloadeddata = function() {
+                    console.log('[VIDEO-PLAYER] ✅ Video data loaded successfully');
+                };
+                
+            } catch (error) {
+                console.error('[VIDEO-PLAYER] ❌ Error:', error);
+                container.style.display = 'none';
+            }
+        }
+        
+        function cleanupVideoPlayer() {
+            const video = document.getElementById('result-video');
+            const fallbackBtn = document.getElementById('video-fallback-btn');
+            
+            // בדיקה אם האלמנטים קיימים
+            if (video && video.src && video.src.startsWith('blob:')) {
+                URL.revokeObjectURL(video.src);
+                video.src = '';
+                console.log('[VIDEO-PLAYER] 🧹 Cleaned up blob URL');
+            }
+            
+            if (video && video.src && video.src.startsWith('data:')) {
+                video.src = '';
+                console.log('[VIDEO-PLAYER] 🧹 Cleaned up data URL');
+            }
+            
+            // איפוס תצוגה
+            if (video) video.style.display = 'block';
+            if (fallbackBtn) fallbackBtn.style.display = 'none';
+        }
+        
+        function loadHistoryVideo(id) {
+            const video = document.getElementById(`history-video-${id}`);
+            const button = document.getElementById(`show-video-${id}`);
+            
+            if (!videoDatabase) {
+                alert('מסד נתונים לא זמין');
+                return;
+            }
+            
+            console.log('[HISTORY] 🎬 Loading video inline for', id);
+            
+            const transaction = videoDatabase.transaction(['videos'], 'readonly');
+            const store = transaction.objectStore('videos');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const result = request.result;
+                if (result && result.videoBlob) {
+                    const url = URL.createObjectURL(result.videoBlob);
+                    video.src = url;
+                    video.style.display = 'block';
+                    button.textContent = '🎬 מוטען';
+                    button.disabled = true;
+                    button.style.background = '#6c757d';
+                    
+                    console.log('[HISTORY] ✅ Video loaded inline');
+                    
+                    // ניקוי אחרי 60 שניות
+                    setTimeout(() => URL.revokeObjectURL(url), 60000);
+                } else {
+                    alert('וידאו לא נמצא');
+                }
+            };
+            
+            request.onerror = () => {
+                alert('שגיאה בטעינת וידאו');
+            };
+        }
+            console.log('[HISTORY] 💾 Downloading video for session', id);
+            
+            if (!videoDatabase) {
+                // אם אין IndexedDB, נשתמש בdownloadVideo הרגיל
+                const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+                const session = history.find(s => s.id === id);
+                if (session) {
+                    // הגדר את recordedChunks ואז הורד
+                    recordedChunks = []; // איפוס
+                    downloadVideo();
+                }
+                return;
+            }
+            
+            const transaction = videoDatabase.transaction(['videos'], 'readonly');
+            const store = transaction.objectStore('videos');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const result = request.result;
+                if (result && result.videoBlob) {
+                    console.log('[HISTORY] ✅ Video loaded from IndexedDB for download');
+                    
+                    // צור לינק הורדה
+                    const url = URL.createObjectURL(result.videoBlob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `oncam-coach-${id}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    console.log('[HISTORY] 💾 Video downloaded successfully');
+                } else {
+                    alert('וידאו לא נמצא');
+                    console.error('[HISTORY] ❌ Video not found in IndexedDB');
+                }
+            };
+            
+            request.onerror = () => {
+                alert('שגיאה בטעינת וידאו');
+                console.error('[HISTORY] ❌ Failed to load video from IndexedDB');
+            };
+        }
+        
+        function clearOldHistory() {
+            if (confirm('למחוק את כל ההיסטוריה? זה יעזור לתקן בעיות עם וידאויים ישנים.')) {
+                // מחק localStorage
+                localStorage.removeItem('oncam-history');
+                
+                // מחק IndexedDB
+                if (videoDatabase) {
+                    const transaction = videoDatabase.transaction(['videos'], 'readwrite');
+                    const store = transaction.objectStore('videos');
+                    store.clear();
+                    console.log('[VIDEO-DB] 🗑️ Cleared all videos');
+                }
+                
+                console.log('[HISTORY] 🗑️ Cleared all history');
+                loadHistory();
+            }
+        }
+        
+        function downloadReport() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 1000;
+            const ctx = canvas.getContext('2d');
+            
+            // רקע גרדיאנט
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // כרטיס לבן
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+            
+            // ריבוע מעוגל
+            const x = 40, y = 40, w = 720, h = 920, r = 20;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            
+            // כותרת
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 36px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎬 OnCam Coach', 400, 100);
+            
+            // תאריך
+            ctx.fillStyle = '#999';
+            ctx.font = '16px -apple-system, sans-serif';
+            const date = new Date().toLocaleString('he-IL');
+            ctx.fillText(date, 400, 130);
+            
+            // ציון כללי
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 24px -apple-system, sans-serif';
+            ctx.fillText('ציון כללי', 400, 180);
+            
+            const score = document.getElementById('final-score').textContent;
+            ctx.font = 'bold 48px -apple-system, sans-serif';
+            ctx.fillText(score, 400, 240);
+            
+            ctx.fillStyle = '#999';
+            ctx.font = '16px -apple-system, sans-serif';
+            ctx.fillText('מתוך 100', 400, 265);
+            
+            // נתונים
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#333';
+            
+            const wpm = document.getElementById('result-wpm').textContent;
+            const words = document.getElementById('result-words').textContent;
+            const time = document.getElementById('result-time').textContent;
+            const eye = document.getElementById('result-rating').textContent;
+            
+            let y2 = 320;
+            
+            // מילים לדקה
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('מילים לדקה', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(wpm, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // סה"כ מילים  
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('סה"כ מילים', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(words, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // זמן
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('זמן', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(time, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // קשר עין
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('קשר עין', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(eye, 650, y2 + 20);
+            
+            // סיכום
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 18px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💬 סיכום האימון', 400, 600);
+            
+            const summary = document.getElementById('summary-text').textContent;
+            ctx.fillStyle = '#555';
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            
+            // פיצול הסיכום לשורות
+            const maxWidth = 500;
+            const words2 = summary.split(' ');
+            let line = '';
+            y2 = 640;
+            
+            for (let i = 0; i < words2.length; i++) {
+                const testLine = line + words2[i] + ' ';
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > maxWidth && i > 0) {
+                    ctx.fillText(line, 680, y2);
+                    line = words2[i] + ' ';
+                    y2 += 25;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, 680, y2);
+            
+            // לוגו
+            ctx.fillStyle = '#ccc';
+            ctx.font = '12px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('OnCam Coach • אימון נאומים מבוסס AI', 400, 930);
+            
+            // הורדה
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `oncam-coach-report-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                console.log('[REPORT] 📄 Downloaded');
+            });
+        }
     </script>
 </body>
 </html>
