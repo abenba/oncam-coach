@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 3.1 • עם טיפים ודוחות</p>
+            <p class="version">גרסה 3.2 • עם וידאו!</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -196,6 +196,9 @@
             <button class="btn btn-primary" onclick="goToCamera()">
                 🔄 אימון נוסף
             </button>
+            <button class="btn btn-success" onclick="downloadVideo()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-top: 10px;">
+                💾 שמור וידאו לגלריה
+            </button>
             <button class="btn btn-success" onclick="downloadReport()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-top: 10px;">
                 📄 שמור דוח תוצאות
             </button>
@@ -213,6 +216,8 @@
         let transcript = '';
         let wordCount = 0;
         let eyeScore = 100;
+        let mediaRecorder = null;
+        let recordedChunks = [];
         
         function show(pageId) {
             // הסתר את כל הדפים
@@ -273,6 +278,13 @@
         function saveToHistory(score, wpm, words, time, eyeRating, summary) {
             let history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
             
+            // יצירת blob מהוידאו
+            let videoBlob = null;
+            if (recordedChunks.length > 0) {
+                videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+                console.log(`[VIDEO] 📦 Created blob: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+            }
+            
             const session = {
                 id: Date.now(),
                 date: new Date().toLocaleString('he-IL', {
@@ -287,7 +299,8 @@
                 time: time,
                 eyeRating: eyeRating,
                 summary: summary,
-                transcript: transcript
+                transcript: transcript,
+                videoBlob: videoBlob  // 🎥 שמירת הוידאו!
             };
             
             history.unshift(session);  // הוסף בתחילה
@@ -297,8 +310,16 @@
                 history = history.slice(0, 5);
             }
             
-            localStorage.setItem('oncam-history', JSON.stringify(history));
-            console.log('[HISTORY] ✅ Saved session, total:', history.length);
+            // שמירה מיוחדת - localStorage לא תמיד תומך בBlob גדולים
+            try {
+                localStorage.setItem('oncam-history', JSON.stringify(history));
+                console.log('[HISTORY] ✅ Saved session with video, total:', history.length);
+            } catch (err) {
+                // אם נכשל - שמור בלי וידאו
+                session.videoBlob = null;
+                localStorage.setItem('oncam-history', JSON.stringify(history));
+                console.warn('[HISTORY] ⚠️ Saved session without video (too large)');
+            }
         }
         
         function loadHistory() {
@@ -310,19 +331,24 @@
                 return;
             }
             
-            list.innerHTML = history.map(session => `
-                <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
-                    <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
-                    
-                    <div style="text-align: right;">
-                        <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}</div>
-                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">${session.wpm} WPM · ${session.words} מילים · ${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}</div>
-                        <div style="color: #666; font-size: 0.9em;">קשר עין: ${session.eyeRating}</div>
+            list.innerHTML = history.map(session => {
+                const hasVideo = session.videoBlob && session.videoBlob.size > 0;
+                const videoIcon = hasVideo ? ' 🎥' : '';
+                
+                return `
+                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                        <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
+                        
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}${videoIcon}</div>
+                            <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">${session.wpm} WPM · ${session.words} מילים · ${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}</div>
+                            <div style="color: #666; font-size: 0.9em;">קשר עין: ${session.eyeRating}</div>
+                        </div>
+                        
+                        <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
                     </div>
-                    
-                    <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
             console.log('[HISTORY] ✅ Loaded', history.length, 'sessions');
         }
@@ -346,7 +372,14 @@
             
             if (!session) return;
             
-            console.log('[HISTORY] 👁️ Viewing session', id);
+            console.log('[HISTORY] 👁️ Viewing session', id, 'hasVideo:', !!session.videoBlob);
+            
+            // הגדר recordedChunks לוידאו הישן (אם יש)
+            if (session.videoBlob && session.videoBlob.size > 0) {
+                recordedChunks = [session.videoBlob];
+            } else {
+                recordedChunks = [];
+            }
             
             // הצג את התוצאות הישנות
             document.getElementById('final-score').textContent = session.score;
@@ -367,6 +400,7 @@
             transcript = '';
             wordCount = 0;
             eyeScore = 100;
+            recordedChunks = [];
             document.getElementById('transcript-text').textContent = 'מקליט...';
             document.getElementById('transcript-text').style.color = '#333';
             document.getElementById('word-count').textContent = '0 מילים';
@@ -386,6 +420,9 @@
             
             // התחל בדיקת קשר עין
             eyeCheckInterval = setInterval(checkEyeContact, 3000);
+            
+            // התחל הקלטת וידאו
+            startVideoRecording();
             
             // התחל זיהוי דיבור
             startSpeechRecognition();
@@ -408,6 +445,12 @@
                 eyeCheckInterval = null;
             }
             document.getElementById('eye-indicator').style.display = 'none';
+            
+            // עצור הקלטת וידאו
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                console.log('[VIDEO] ⏹️ Stopped recording');
+            }
             
             // עצור זיהוי דיבור
             if (recognition) {
@@ -669,6 +712,63 @@
         }
         
         console.log('[APP] OnCam Coach v3.1 loaded');
+        
+        function startVideoRecording() {
+            const video = document.getElementById('video');
+            const stream = video.srcObject;
+            
+            if (!stream) {
+                console.error('[VIDEO] ❌ No stream available');
+                return;
+            }
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp8,opus',
+                    videoBitsPerSecond: 800000  // 800 Kbps - איכות בינונית לחיסכון בזיכרון
+                });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                        console.log(`[VIDEO] 📦 Chunk ${recordedChunks.length}: ${(event.data.size / 1024).toFixed(1)} KB`);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    console.log('[VIDEO] ✅ Recording stopped, total chunks:', recordedChunks.length);
+                };
+                
+                mediaRecorder.start(2000); // chunk כל 2 שניות
+                console.log('[VIDEO] 📹 Recording started');
+                
+            } catch (error) {
+                console.error('[VIDEO] ❌ Failed to start recording:', error);
+            }
+        }
+        
+        function downloadVideo() {
+            if (recordedChunks.length === 0) {
+                alert('אין וידאו זמין להורדה');
+                return;
+            }
+            
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `oncam-coach-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            console.log('[VIDEO] 💾 Downloaded');
+        }
         
         function downloadReport() {
             const canvas = document.createElement('canvas');
