@@ -3,82 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Navigation</title>
+    <title>OnCam Coach - Clean</title>
     <style>
-        body { font-family: Arial; padding: 20px; text-align: center; }
-        .page { display: none; padding: 40px; margin: 20px; border: 2px solid #ccc; border-radius: 10px; }
-        .page.active { display: block; background: #f0f0f0; }
-        button { padding: 15px 25px; margin: 10px; font-size: 16px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container { 
+            width: 100%; 
+            max-width: 500px; 
+            background: white; 
+            border-radius: 25px; 
+            padding: 25px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { 
+            color: #667eea; 
+            text-align: center; 
+            margin-bottom: 15px; 
+            font-size: 2em; 
+        }
+        .subtitle { 
+            text-align: center; 
+            margin-bottom: 35px; 
+            line-height: 1.8;
+            color: #555;
+        }
+        .btn { 
+            width: 100%; 
+            padding: 18px; 
+            margin: 12px 0; 
+            border: none; 
+            border-radius: 15px; 
+            font-size: 1.1em; 
+            font-weight: 600; 
+            cursor: pointer; 
+            font-family: inherit;
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+        }
+        .btn-secondary { 
+            background: #f0f0f0; 
+            color: #333; 
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        /* מצלמה */
+        #video-container { 
+            position: relative; 
+            background: #000; 
+            border-radius: 15px; 
+            overflow: hidden; 
+            margin-bottom: 20px; 
+        }
+        #video { 
+            width: 100%; 
+            display: block; 
+            min-height: 250px; 
+        }
+        #status { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            font-size: 1.1em; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
-    <h1>🧪 בדיקת ניווט</h1>
-    
-    <!-- דף בית -->
-    <div id="home-page" class="page active">
-        <h2>🏠 דף בית</h2>
-        <button onclick="testGoToCamera()">🎬 לך למצלמה</button>
-        <button onclick="testGoToHistory()">📊 לך להיסטוריה</button>
+    <div class="container">
+        <!-- עמוד בית -->
+        <div id="home-page" class="page active">
+            <h1>🎤 OnCam Coach</h1>
+            <div class="subtitle">
+                <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
+                <div>אני כאן בשבילך.</div>
+            </div>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.0 • חדש ונקי</p>
+            
+            <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
+            <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
+        </div>
+
+        <!-- עמוד מצלמה -->
+        <div id="camera-page" class="page">
+            <h1>🎬 הקלטה</h1>
+            
+            <div id="video-container">
+                <video id="video" autoplay muted></video>
+                <div id="status">מוכן</div>
+            </div>
+            
+            <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
+            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
+        </div>
+
+        <!-- עמוד היסטוריה -->
+        <div id="history-page" class="page">
+            <h1>📊 היסטוריה</h1>
+            <div style="text-align: center; padding: 60px 20px; color: #999;">
+                <div style="font-size: 3em; margin-bottom: 20px;">📭</div>
+                <div>אין אימונים שמורים עדיין</div>
+            </div>
+            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
+        </div>
     </div>
-    
-    <!-- דף מצלמה -->
-    <div id="camera-page" class="page">
-        <h2>📹 דף מצלמה</h2>
-        <p>✅ הניווט למצלמה עובד!</p>
-        <button onclick="testGoHome()">🏠 חזור לבית</button>
-    </div>
-    
-    <!-- דף היסטוריה -->
-    <div id="history-page" class="page">
-        <h2>📊 דף היסטוריה</h2>
-        <p>✅ הניווט להיסטוריה עובד!</p>
-        <button onclick="testGoHome()">🏠 חזור לבית</button>
-    </div>
-    
+
     <script>
-        console.log('🧪 Test Navigation loaded');
+        console.log('🚀 OnCam Coach v7.0 loading...');
         
+        // משתנים
+        let stream = null;
+        
+        // ניווט בסיסי
         function show(pageId) {
-            console.log('📍 Switching to:', pageId);
+            console.log('[NAV] Switching to:', pageId);
             
-            // הסתר כל הדפים
             const pages = document.querySelectorAll('.page');
-            pages.forEach(page => {
-                page.classList.remove('active');
-                console.log('📤 Hidden:', page.id);
-            });
+            pages.forEach(page => page.classList.remove('active'));
             
-            // הצג דף חדש
             const target = document.getElementById(pageId);
             if (target) {
                 target.classList.add('active');
-                console.log('📥 Shown:', pageId);
+                console.log('[NAV] ✅ Success');
             } else {
-                console.error('❌ Page not found:', pageId);
+                console.error('[NAV] ❌ Page not found:', pageId);
             }
         }
         
-        function testGoToCamera() {
-            console.log('🎬 Going to camera...');
-            show('camera-page');
-        }
-        
-        function testGoToHistory() {
-            console.log('📊 Going to history...');
-            show('history-page');
-        }
-        
-        function testGoHome() {
-            console.log('🏠 Going home...');
+        function goHome() {
+            console.log('[APP] Going home');
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
             show('home-page');
         }
         
-        // בדוק שהכל טעון
+        function goToCamera() {
+            console.log('[APP] Going to camera');
+            show('camera-page');
+            setupCamera();
+        }
+        
+        function goToHistory() {
+            console.log('[APP] Going to history');
+            show('history-page');
+        }
+        
+        // מצלמה פשוטה
+        async function setupCamera() {
+            console.log('[CAMERA] Setting up...');
+            document.getElementById('status').textContent = 'מבקש הרשאה...';
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: true 
+                });
+                
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('status').textContent = 'מוכן';
+                console.log('[CAMERA] ✅ Ready');
+                
+            } catch (error) {
+                console.error('[CAMERA] ❌ Error:', error);
+                document.getElementById('status').textContent = 'שגיאה';
+                alert('לא ניתן לגשת למצלמה: ' + error.message);
+            }
+        }
+        
+        // הקלטה פשוטה
+        function startBasicRecording() {
+            console.log('[REC] Starting basic recording...');
+            document.getElementById('status').textContent = 'מקליט...';
+            document.getElementById('start-btn').textContent = '⏹️ עצור הקלטה';
+            document.getElementById('start-btn').onclick = stopBasicRecording;
+        }
+        
+        function stopBasicRecording() {
+            console.log('[REC] Stopping...');
+            document.getElementById('status').textContent = 'מוכן';
+            document.getElementById('start-btn').textContent = '⏺️ התחל הקלטה';
+            document.getElementById('start-btn').onclick = startBasicRecording;
+        }
+        
+        // טוען בהצלחה
         window.onload = function() {
-            console.log('✅ Page loaded successfully');
-            const pages = document.querySelectorAll('.page');
-            console.log('📄 Found pages:', pages.length);
-            pages.forEach(p => console.log('📄 Page ID:', p.id));
+            console.log('✅ OnCam Coach v7.0 loaded successfully');
         };
     </script>
 </body>
