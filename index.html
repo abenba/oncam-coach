@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 4.4 • וידאו Base64</p>
+            <p class="version">גרסה 4.5 • תיקון דיבור ונגן</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -149,6 +149,9 @@
             <div id="history-list">
                 <!-- התוכן ימולא דינמית -->
             </div>
+            <button class="btn btn-secondary" onclick="clearOldHistory()" style="background: #dc3545; margin-bottom: 10px;">
+                🗑️ נקה היסטוריה ישנה
+            </button>
             <button class="btn btn-secondary" onclick="goHome()">
                 🏠 חזור לבית
             </button>
@@ -384,6 +387,19 @@
         function loadHistory() {
             const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
             const list = document.getElementById('history-list');
+            
+            console.log('[HISTORY] 📂 Loading history... Found:', history.length, 'sessions');
+            
+            // DEBUG - הדפס את כל ההיסטוריה
+            history.forEach((session, i) => {
+                console.log(`[HISTORY] Session ${i}:`, {
+                    id: session.id,
+                    date: session.date,
+                    hasVideoBlob: !!session.videoBlob,
+                    hasVideoBase64: !!session.videoBase64,
+                    base64Length: session.videoBase64 ? session.videoBase64.length : 0
+                });
+            });
             
             if (history.length === 0) {
                 list.innerHTML = '<div style="text-align: center; padding: 50px; color: #999;"><div style="font-size: 3em; margin-bottom: 20px;">📭</div><div style="font-size: 1.2em; margin-bottom: 10px;">אין אימונים שמורים</div><div style="font-size: 0.9em;">הרץ אימון ראשון כדי להתחיל!</div></div>';
@@ -757,15 +773,28 @@
             }
             
             recognition = new SpeechRecognition();
-            recognition.lang = 'he-IL';  // עברית
-            recognition.continuous = true;  // המשך הקלטה
-            recognition.interimResults = true;  // תוצאות זמניות
+            
+            // הגדרות מהירות יותר לאייפון
+            recognition.lang = 'he-IL';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            // הגדרות נוספות לביצועים
+            if ('webkitSpeechRecognition' in window) {
+                recognition.webkitServiceType = 'search';  // מהיר יותר
+            }
+            
+            let restartCount = 0;
+            let lastResultTime = Date.now();
             
             recognition.onstart = () => {
-                console.log('[SPEECH] ✅ Started');
+                console.log('[SPEECH] ✅ Started, restart count:', restartCount);
+                lastResultTime = Date.now();
             };
             
             recognition.onresult = (event) => {
+                lastResultTime = Date.now();
                 let finalTranscript = '';
                 let interimTranscript = '';
                 
@@ -775,8 +804,10 @@
                     
                     if (result.isFinal) {
                         finalTranscript += text + ' ';
+                        console.log('[SPEECH] 📝 Final:', text.trim());
                     } else {
                         interimTranscript += text;
+                        console.log('[SPEECH] 🔤 Interim:', text.trim());
                     }
                 }
                 
@@ -785,7 +816,7 @@
                     wordCount = transcript.trim().split(/\s+/).filter(word => word.length > 0).length;
                     
                     document.getElementById('word-count').textContent = `${wordCount} מילים`;
-                    console.log('[SPEECH] New words:', finalTranscript.trim(), '| Total:', wordCount);
+                    console.log('[SPEECH] 📊 Total words:', wordCount);
                 }
                 
                 // הצג תמלול (קבוע + זמני)
@@ -795,25 +826,50 @@
             
             recognition.onerror = (event) => {
                 console.error('[SPEECH] Error:', event.error);
+                
                 if (event.error === 'not-allowed') {
                     document.getElementById('transcript-text').textContent = 'נדרשת הרשאה למיקרופון';
                     document.getElementById('transcript-text').style.color = '#e74c3c';
+                } else if (event.error === 'network') {
+                    console.log('[SPEECH] Network error - will restart');
+                    // רק נמשיך, ה-onend יטפל בזה
+                } else {
+                    console.log('[SPEECH] Other error:', event.error, '- will restart');
                 }
             };
             
             recognition.onend = () => {
-                console.log('[SPEECH] Ended, restarting...');
-                if (startTime) {  // רק אם עדיין מקליטים
+                const timeSinceStart = Date.now() - lastResultTime;
+                console.log('[SPEECH] Ended, time since last result:', timeSinceStart, 'ms');
+                
+                if (startTime && restartCount < 10) { // רק אם עדיין מקליטים ולא יותר מ-10 ניסיונות
+                    restartCount++;
+                    console.log('[SPEECH] 🔄 Restarting... attempt:', restartCount);
+                    
+                    // המתן קצת לפני restart (במיוחד לאייפון)
                     setTimeout(() => {
-                        if (recognition) recognition.start();
-                    }, 1000);
+                        try {
+                            if (recognition && startTime) {
+                                recognition.start();
+                            }
+                        } catch (error) {
+                            console.error('[SPEECH] Failed to restart:', error);
+                            setTimeout(() => {
+                                if (startTime) startSpeechRecognition(); // התחל מחדש לגמרי
+                            }, 2000);
+                        }
+                    }, 500);
+                } else {
+                    console.log('[SPEECH] Stopped restarting - too many attempts or recording ended');
                 }
             };
             
             try {
                 recognition.start();
+                console.log('[SPEECH] 🎤 Starting recognition...');
             } catch (error) {
                 console.error('[SPEECH] Start error:', error);
+                setTimeout(() => startSpeechRecognition(), 1000); // נסה שוב אחרי שנייה
             }
         }
         
@@ -1002,6 +1058,14 @@
             
             console.log('[HISTORY] 🎬 Playing video for session', id);
             viewHistorySession(id); // יעבור לעמוד תוצאות עם וידאו
+        }
+        
+        function clearOldHistory() {
+            if (confirm('למחוק את כל ההיסטוריה? זה יעזור לתקן בעיות עם וידאויים ישנים.')) {
+                localStorage.removeItem('oncam-history');
+                console.log('[HISTORY] 🗑️ Cleared all history');
+                loadHistory();
+            }
         }
         
         function downloadReport() {
