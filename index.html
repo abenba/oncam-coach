@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.5 • debug ספירת מילים</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.6 • debug על המסך</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -110,6 +110,11 @@
             <div style="background: #f8f9fa; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #e9ecef; min-height: 60px;">
                 <strong>תמלול בזמן אמת:</strong><br>
                 <span id="live-transcript" style="color: #666;">התמלול יופיע כאן...</span>
+            </div>
+            
+            <div style="background: #fff3cd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #ffeaa7; font-size: 0.9em;">
+                <strong>🔍 Debug Info:</strong><br>
+                <div id="debug-info" style="color: #856404;">מחכה לדיבור...</div>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
@@ -211,6 +216,7 @@
             document.getElementById('start-btn').onclick = startBasicRecording;
             document.getElementById('live-transcript').textContent = 'התמלול יופיע כאן...';
             document.getElementById('live-transcript').style.color = '#666';
+            document.getElementById('debug-info').textContent = 'מחכה לדיבור...';
             startTime = null;
             transcript = '';
             wordCount = 0;
@@ -331,8 +337,8 @@
             };
             
             recognition.onresult = (event) => {
-                console.log('[SPEECH] 📝 Got result! Results count:', event.results.length);
-                console.log('[SPEECH] 🔍 Checking results...');
+                const debugEl = document.getElementById('debug-info');
+                debugEl.innerHTML = `📝 Got result! Count: ${event.results.length}<br>`;
                 
                 let finalText = '';
                 let interimText = '';
@@ -342,51 +348,42 @@
                     const text = result[0].transcript;
                     const isFinal = result.isFinal;
                     
-                    console.log(`[SPEECH] Result ${i}: "${text}" (final: ${isFinal})`);
+                    debugEl.innerHTML += `Result ${i}: "${text}" (final: ${isFinal})<br>`;
                     
                     if (isFinal) {
                         finalText += text + ' ';
-                        console.log('[SPEECH] ✅ Added to finalText:', text);
                     } else {
                         interimText += text;
-                        console.log('[SPEECH] 🔤 Added to interimText:', text);
                     }
                 }
                 
-                console.log('[SPEECH] 📋 Summary:');
-                console.log('  - finalText:', finalText);
-                console.log('  - interimText:', interimText);
+                debugEl.innerHTML += `FinalText: "${finalText}"<br>`;
+                debugEl.innerHTML += `InterimText: "${interimText}"<br>`;
                 
                 if (finalText) {
-                    console.log('[SPEECH] 🎯 Processing finalText...');
                     transcript += finalText;
-                    console.log('[SPEECH] 📄 New transcript:', transcript);
-                    
                     wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
-                    console.log('[SPEECH] 🔢 NEW WORD COUNT:', wordCount);
+                    
+                    debugEl.innerHTML += `📊 Transcript: "${transcript}"<br>`;
+                    debugEl.innerHTML += `🔢 WordCount: ${wordCount}<br>`;
                     
                     // עדכון Status + תמלול חי
                     const statusText = `מקליט... ${wordCount} מילים`;
-                    console.log('[SPEECH] 📱 Setting status to:', statusText);
-                    document.getElementById('status').textContent = statusText;
+                    debugEl.innerHTML += `📱 Setting status: "${statusText}"<br>`;
                     
+                    document.getElementById('status').textContent = statusText;
                     document.getElementById('live-transcript').textContent = transcript || 'מדבר...';
                     document.getElementById('live-transcript').style.color = '#333';
                     
-                    console.log('[SPEECH] ✅ All updates complete');
+                    debugEl.innerHTML += `✅ Status updated!<br>`;
                 }
                 
                 if (interimText) {
-                    console.log('[SPEECH] 🔤 Processing interimText...');
-                    
                     // הצג תמלול זמני
                     document.getElementById('live-transcript').textContent = (transcript + interimText) || 'מדבר...';
-                    document.getElementById('live-transcript').style.color = '#666'; // אפור לזמני
-                    
-                    console.log('[SPEECH] ✅ Interim update complete');
+                    document.getElementById('live-transcript').style.color = '#666';
+                    debugEl.innerHTML += `🔤 Interim displayed<br>`;
                 }
-                
-                console.log('[SPEECH] 🏁 onresult finished');
             };
             
             recognition.onerror = (e) => {
