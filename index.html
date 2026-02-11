@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 9.0 • עם טיפים מקצועיים!</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 9.1 • debug מחדש</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -112,9 +112,14 @@
                 <span id="live-transcript" style="color: #666;">התמלול יופיע כאן...</span>
             </div>
             
-            <div style="background: #e3f2fd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #2196f3;">
+            <div style="background: #fff3cd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #ffeaa7; font-size: 0.9em;">
+                <strong>🔍 Debug Info:</strong><br>
+                <div id="debug-info" style="color: #856404;">מחכה לדיבור...</div>
+            </div>
+            
+            <div style="background: #e3f2fd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #2196f3; display: none;" id="tip-box">
                 <strong>💡 טיפ מקצועי:</strong><br>
-                <span id="professional-tip" style="color: #1565c0; font-size: 0.9em;">מחכה להתחלת ההקלטה...</span>
+                <span id="professional-tip" style="color: #1565c0; font-size: 0.9em;">טיפ יופיע כאן...</span>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
@@ -241,7 +246,8 @@
             document.getElementById('start-btn').onclick = startBasicRecording;
             document.getElementById('live-transcript').textContent = 'התמלול יופיע כאן...';
             document.getElementById('live-transcript').style.color = '#666';
-            document.getElementById('professional-tip').textContent = 'מחכה להתחלת ההקלטה...';
+            document.getElementById('debug-info').textContent = 'מחכה לדיבור...';
+            document.getElementById('tip-box').style.display = 'none';
             startTime = null;
             transcript = '';
             wordCount = 0;
@@ -478,11 +484,14 @@
                     
                     if (isFinal) {
                         finalText += text + ' ';
+                        debugEl.innerHTML += `✅ FINAL TEXT: "${text}"<br>`;
                     } else {
                         interimText += text;
+                        debugEl.innerHTML += `🔤 INTERIM: "${text}"<br>`;
                     }
                 }
                 
+                debugEl.innerHTML += `<br>📊 PROCESSING:<br>`;
                 debugEl.innerHTML += `FinalText: "${finalText}"<br>`;
                 debugEl.innerHTML += `InterimText: "${interimText}"<br>`;
                 
@@ -490,18 +499,21 @@
                     transcript += finalText;
                     wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
                     
-                    debugEl.innerHTML += `📊 Transcript: "${transcript}"<br>`;
-                    debugEl.innerHTML += `🔢 WordCount: ${wordCount}<br>`;
+                    debugEl.innerHTML += `<br>📈 UPDATING:<br>`;
+                    debugEl.innerHTML += `New transcript: "${transcript}"<br>`;
+                    debugEl.innerHTML += `Word count: ${wordCount}<br>`;
                     
                     // עדכון Status + תמלול חי
                     const statusText = `מקליט... ${wordCount} מילים`;
-                    debugEl.innerHTML += `📱 Setting status: "${statusText}"<br>`;
+                    debugEl.innerHTML += `Status: "${statusText}"<br>`;
                     
                     document.getElementById('status').textContent = statusText;
                     document.getElementById('live-transcript').textContent = transcript || 'מדבר...';
                     document.getElementById('live-transcript').style.color = '#333';
                     
-                    debugEl.innerHTML += `✅ Status updated!<br>`;
+                    debugEl.innerHTML += `✅ ALL UPDATED!<br>`;
+                } else {
+                    debugEl.innerHTML += `⚠️ No final text - only interim<br>`;
                 }
                 
                 if (interimText) {
