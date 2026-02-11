@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 5.0 • IndexedDB + restart מהיר</p>
+            <p class="version">גרסה 5.1 • נגן תקין + דיבור מהיר</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -407,27 +407,11 @@
                 // DEBUG - בואו נראה מה קורה
                 console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}`);
                 
-                const playButton = hasVideo ? `
-                    <button onclick="playHistoryVideo(${session.id}, event)" style="
-                        position: absolute; 
-                        bottom: 10px; 
-                        left: 60px; 
-                        background: #667eea; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 20px; 
-                        padding: 6px 12px; 
-                        font-size: 0.8em; 
-                        cursor: pointer;
-                        z-index: 10;
-                    ">▶️ נגן</button>
-                ` : '';
-                
                 return `
-                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; ${hasVideo ? '' : 'cursor: pointer;'} transition: all 0.3s ease;" ${hasVideo ? '' : `onclick="viewHistorySession(${session.id})"`} onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
                         <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
                         
-                        <div style="text-align: right;">
+                        <div style="text-align: right;" ${hasVideo ? '' : `onclick="viewHistorySession(${session.id})"`}>
                             <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}${videoIcon}</div>
                             <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">${session.wpm} WPM · ${session.words} מילים · ${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}</div>
                             <div style="color: #666; font-size: 0.9em;">קשר עין: ${session.eyeRating}</div>
@@ -435,7 +419,34 @@
                         
                         <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
                         
-                        ${playButton}
+                        ${hasVideo ? `
+                            <button onclick="playHistoryVideo(${session.id})" style="
+                                position: absolute; 
+                                bottom: 10px; 
+                                left: 60px; 
+                                background: #667eea; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 20px; 
+                                padding: 6px 12px; 
+                                font-size: 0.8em; 
+                                cursor: pointer;
+                                z-index: 100;
+                            ">▶️ נגן</button>
+                            <button onclick="viewHistorySession(${session.id})" style="
+                                position: absolute; 
+                                bottom: 10px; 
+                                left: 130px; 
+                                background: #6c757d; 
+                                color: white; 
+                                border: none; 
+                                border-radius: 20px; 
+                                padding: 6px 12px; 
+                                font-size: 0.8em; 
+                                cursor: pointer;
+                                z-index: 100;
+                            ">📊 דוח</button>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -788,17 +799,25 @@
                 console.log('[SPEECH] ✅ Started, restart count:', restartCount);
                 lastResultTime = Date.now();
                 
-                // אם אין תגובה תוך 10 שניות - restart בכוח
+                // אם אין תגובה תוך 5 שניות - restart בכוח (מהיר יותר!)
                 forceRestartTimer = setTimeout(() => {
-                    console.log('[SPEECH] ⚠️ No response for 10s - forcing restart');
+                    console.log('[SPEECH] ⚠️ No response for 5s - forcing restart');
                     if (recognition && startTime) {
                         try {
                             recognition.stop();
+                            // התחל מיד מחדש
+                            setTimeout(() => {
+                                if (startTime) {
+                                    restartCount++;
+                                    console.log('[SPEECH] 🔄 Force restart attempt:', restartCount);
+                                    recognition.start();
+                                }
+                            }, 200);
                         } catch (e) {
                             console.log('[SPEECH] Stop error during force restart:', e);
                         }
                     }
-                }, 10000);
+                }, 5000);  // 5 שניות במקום 10
             };
             
             recognition.onresult = (event) => {
@@ -854,14 +873,20 @@
             };
             
             recognition.onend = () => {
+                // נקה timer
+                if (forceRestartTimer) {
+                    clearTimeout(forceRestartTimer);
+                    forceRestartTimer = null;
+                }
+                
                 const timeSinceStart = Date.now() - lastResultTime;
                 console.log('[SPEECH] Ended, time since last result:', timeSinceStart, 'ms');
                 
-                if (startTime && restartCount < 10) { // רק אם עדיין מקליטים ולא יותר מ-10 ניסיונות
+                if (startTime && restartCount < 20) { // יותר ניסיונות!
                     restartCount++;
                     console.log('[SPEECH] 🔄 Restarting... attempt:', restartCount);
                     
-                    // המתן קצת לפני restart (במיוחד לאייפון)
+                    // המתן קצר יותר - 200ms במקום 500ms
                     setTimeout(() => {
                         try {
                             if (recognition && startTime) {
@@ -869,22 +894,32 @@
                             }
                         } catch (error) {
                             console.error('[SPEECH] Failed to restart:', error);
+                            // אם נכשל, נסה restart מלא תוך שנייה
                             setTimeout(() => {
-                                if (startTime) startSpeechRecognition(); // התחל מחדש לגמרי
-                            }, 2000);
+                                if (startTime) {
+                                    console.log('[SPEECH] 🔄 Full restart');
+                                    startSpeechRecognition(); // התחל מחדש לגמרי
+                                }
+                            }, 1000);
                         }
-                    }, 500);
+                    }, 200); // מהיר יותר!
                 } else {
                     console.log('[SPEECH] Stopped restarting - too many attempts or recording ended');
                 }
             };
             
-            try {
-                recognition.start();
-                console.log('[SPEECH] 🎤 Starting recognition...');
-            } catch (error) {
-                console.error('[SPEECH] Start error:', error);
-                setTimeout(() => startSpeechRecognition(), 1000); // נסה שוב אחרי שנייה
+            // התחל עם 3 ניסיונות מקבילים (לאייפון הבעייתי)
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    try {
+                        if (startTime) {
+                            recognition.start();
+                            console.log(`[SPEECH] 🎤 Start attempt ${i + 1}/3`);
+                        }
+                    } catch (error) {
+                        console.log(`[SPEECH] Start attempt ${i + 1} failed:`, error);
+                    }
+                }, i * 1000); // כל שנייה ניסיון חדש
             }
         }
         
@@ -1040,15 +1075,13 @@
             fallbackBtn.style.display = 'none';
         }
         
-        function playHistoryVideo(id, event) {
-            event.stopPropagation(); // מנע מהלחיצה על הכרטיס
+        function playHistoryVideo(id) {
+            console.log('[HISTORY] 🎬 Loading video for session', id);
             
             if (!videoDatabase) {
                 alert('מסד הנתונים לא זמין');
                 return;
             }
-            
-            console.log('[HISTORY] 🎬 Loading video for session', id);
             
             const transaction = videoDatabase.transaction(['videos'], 'readonly');
             const store = transaction.objectStore('videos');
