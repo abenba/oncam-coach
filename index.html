@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.1 • מהגרסה שעובדת</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.2 • תוצאות מלאות</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -118,6 +118,44 @@
                 <div style="font-size: 3em; margin-bottom: 20px;">📭</div>
                 <div>אין אימונים שמורים עדיין</div>
             </div>
+            <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
+        </div>
+
+        <!-- עמוד תוצאות -->
+        <div id="results-page" class="page">
+            <h1>🏆 תוצאות</h1>
+            
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 20px; text-align: center; margin: 20px 0;">
+                <div style="font-size: 1.2em; margin-bottom: 10px;">ציון כללי</div>
+                <div style="font-size: 3em; font-weight: 800; margin: 10px 0;" id="final-score">0</div>
+                <div style="margin-top: 5px;">מתוך 100</div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">מילים לדקה</div>
+                    <div style="font-size: 1.8em; font-weight: 700; color: #667eea; margin: 8px 0;" id="result-wpm">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">סה"כ מילים</div>
+                    <div style="font-size: 1.8em; font-weight: 700; color: #667eea; margin: 8px 0;" id="result-words">0</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">זמן</div>
+                    <div style="font-size: 1.8em; font-weight: 700; color: #667eea; margin: 8px 0;" id="result-time">0:00</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid #e9ecef;">
+                    <div style="color: #666; font-size: 0.9em;">דירוג</div>
+                    <div style="font-size: 1.3em; font-weight: 700; color: #667eea; margin: 8px 0;" id="result-rating">טוב</div>
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #e9ecef;">
+                <strong>תמלול:</strong><br>
+                <span id="result-transcript">התמלול יופיע כאן</span>
+            </div>
+            
+            <button class="btn btn-primary" onclick="goToCamera()">🔄 אימון נוסף</button>
             <button class="btn btn-secondary" onclick="goHome()">🏠 חזור לבית</button>
         </div>
     </div>
@@ -161,6 +199,14 @@
             console.log('[APP] Going to camera');
             show('camera-page');
             setupCamera();
+            
+            // איפוס לקלטה חדשה
+            document.getElementById('status').textContent = 'מוכן';
+            document.getElementById('start-btn').textContent = '⏺️ התחל הקלטה';
+            document.getElementById('start-btn').onclick = startBasicRecording;
+            startTime = null;
+            transcript = '';
+            wordCount = 0;
         }
         
         function goToHistory() {
@@ -213,12 +259,39 @@
             
             const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
             const mins = elapsed / 60;
-            const wmp = mins > 0 ? Math.round(wordCount / mins) : 0;
+            const wpm = mins > 0 ? Math.round(wordCount / mins) : 0;
             
-            document.getElementById('status').textContent = `סיים! ${wordCount} מילים, ${wmp} WPM`;
-            document.getElementById('start-btn').textContent = '⏺️ התחל הקלטה';
-            document.getElementById('start-btn').onclick = startBasicRecording;
+            // חישוב ציון פשוט
+            let score = 0;
+            if (wpm >= 120 && wpm <= 180) score += 40;
+            else if (wpm >= 100) score += 30;
+            else if (wpm >= 80) score += 20;
             
+            if (wordCount >= 50) score += 30;
+            else if (wordCount >= 25) score += 20;
+            else if (wordCount >= 10) score += 10;
+            
+            if (elapsed >= 60) score += 30;
+            else if (elapsed >= 30) score += 20;
+            else if (elapsed >= 15) score += 10;
+            
+            // דירוג
+            let rating = 'צריך שיפור';
+            if (score >= 80) rating = 'מעולה';
+            else if (score >= 60) rating = 'טוב';
+            else if (score >= 40) rating = 'בסדר';
+            
+            // הצג תוצאות
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('result-wpm').textContent = wpm;
+            document.getElementById('result-words').textContent = wordCount;
+            document.getElementById('result-time').textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
+            document.getElementById('result-rating').textContent = rating;
+            document.getElementById('result-transcript').textContent = transcript || 'אין תמלול';
+            
+            show('results-page');
+            
+            // איפוס
             startTime = null;
             transcript = '';
             wordCount = 0;
