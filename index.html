@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.2 • תוצאות מלאות</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 7.3 • debug זיהוי דיבור</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -297,52 +297,111 @@
             wordCount = 0;
         }
         
-        // זיהוי דיבור פשוט
+        // זיהוי דיבור עם debug מפורט
         function startSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                console.log('[SPEECH] Not supported');
+                console.log('[SPEECH] ❌ Not supported');
+                document.getElementById('status').textContent = 'זיהוי דיבור לא נתמך';
                 return;
             }
             
+            console.log('[SPEECH] 🎤 Creating recognition...');
             recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = false;
             recognition.interimResults = true;
             
+            console.log('[SPEECH] ⚙️ Settings:', {
+                lang: recognition.lang,
+                continuous: recognition.continuous,
+                interimResults: recognition.interimResults
+            });
+            
             recognition.onstart = () => {
-                console.log('[SPEECH] ✅ Started');
+                console.log('[SPEECH] ✅ STARTED successfully');
+                document.getElementById('status').textContent = 'מקליט... מחכה לדיבור';
             };
             
             recognition.onresult = (event) => {
+                console.log('[SPEECH] 📝 Got result! Results count:', event.results.length);
+                
                 let finalText = '';
+                let interimText = '';
+                
                 for (let i = 0; i < event.results.length; i++) {
-                    const text = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
+                    const result = event.results[i];
+                    const text = result[0].transcript;
+                    const isFinal = result.isFinal;
+                    
+                    console.log(`[SPEECH] Result ${i}: "${text}" (final: ${isFinal})`);
+                    
+                    if (isFinal) {
                         finalText += text + ' ';
+                    } else {
+                        interimText += text;
                     }
                 }
                 
                 if (finalText) {
                     transcript += finalText;
                     wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
+                    console.log('[SPEECH] 🎯 Final text added:', finalText.trim());
+                    console.log('[SPEECH] 📊 Total transcript:', transcript);
+                    console.log('[SPEECH] 🔢 Word count:', wordCount);
                     document.getElementById('status').textContent = `מקליט... ${wordCount} מילים`;
+                }
+                
+                if (interimText) {
+                    console.log('[SPEECH] 🔤 Interim text:', interimText);
+                    document.getElementById('status').textContent = `מקליט... שומע: "${interimText}"`;
                 }
             };
             
             recognition.onerror = (e) => {
-                console.log('[SPEECH] Error:', e.error);
+                console.error('[SPEECH] ❌ ERROR:', e.error, e);
+                document.getElementById('status').textContent = `שגיאה: ${e.error}`;
+                
+                // רשימת שגיאות אפשריות
+                const errorMessages = {
+                    'not-allowed': 'נדרשת הרשאה למיקרופון',
+                    'no-speech': 'לא נשמע דיבור',
+                    'audio-capture': 'בעיה במיקרופון',
+                    'network': 'בעיית רשת',
+                    'service-not-allowed': 'שירות לא מורשה',
+                    'bad-grammar': 'בעיית דקדוק',
+                    'language-not-supported': 'שפה לא נתמכת'
+                };
+                
+                const msg = errorMessages[e.error] || e.error;
+                console.error('[SPEECH] Error details:', msg);
             };
             
             recognition.onend = () => {
+                console.log('[SPEECH] 🔚 ENDED - will restart if still recording');
+                
                 if (startTime) {
+                    console.log('[SPEECH] 🔄 Restarting...');
                     setTimeout(() => {
-                        if (recognition) recognition.start();
+                        if (startTime && recognition) {
+                            try {
+                                recognition.start();
+                                console.log('[SPEECH] 🔄 Restart successful');
+                            } catch (err) {
+                                console.error('[SPEECH] 🔄 Restart failed:', err);
+                            }
+                        }
                     }, 500);
                 }
             };
             
-            recognition.start();
+            try {
+                console.log('[SPEECH] 🚀 Starting recognition...');
+                recognition.start();
+            } catch (err) {
+                console.error('[SPEECH] 🚀 Start failed:', err);
+                document.getElementById('status').textContent = `שגיאת התחלה: ${err.message}`;
+            }
         }
         
         // טוען בהצלחה
