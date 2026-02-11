@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 6.0 • תיקון מקצועי</p>
+            <p class="version">גרסה 6.1 • זיהוי מהיר + נגן מובנה</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -441,10 +441,10 @@
                 console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}`);
                 
                 return `
-                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; ${hasVideo ? '' : 'cursor: pointer;'} transition: all 0.3s ease;" ${hasVideo ? '' : `onclick="viewHistorySession(${session.id})"`} onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                    <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
                         <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
                         
-                        <div style="text-align: right;" ${hasVideo ? '' : `onclick="viewHistorySession(${session.id})"`}>
+                        <div style="text-align: right;" onclick="viewHistorySession(${session.id})">
                             <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}${videoIcon}</div>
                             <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">${session.wpm} WPM · ${session.words} מילים · ${Math.floor(session.time/60)}:${String(session.time%60).padStart(2,'0')}</div>
                             <div style="color: #666; font-size: 0.9em;">קשר עין: ${session.eyeRating}</div>
@@ -453,58 +453,37 @@
                         <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
                         
                         ${hasVideo ? `
-                            <button id="download-btn-${session.id}" style="
-                                position: absolute; 
-                                bottom: 10px; 
-                                left: 60px; 
-                                background: #28a745; 
-                                color: white; 
-                                border: none; 
-                                border-radius: 20px; 
-                                padding: 6px 12px; 
-                                font-size: 0.8em; 
-                                cursor: pointer;
-                                z-index: 100;
-                            ">💾 הורד</button>
-                            <button id="view-btn-${session.id}" style="
-                                position: absolute; 
-                                bottom: 10px; 
-                                left: 130px; 
-                                background: #6c757d; 
-                                color: white; 
-                                border: none; 
-                                border-radius: 20px; 
-                                padding: 6px 12px; 
-                                font-size: 0.8em; 
-                                cursor: pointer;
-                                z-index: 100;
-                            ">📊 דוח</button>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                                <video id="history-video-${session.id}" controls style="width: 100%; max-height: 150px; border-radius: 10px; background: #000; margin-bottom: 10px; display: none;">
+                                    הדפדפן לא תומך בוידאו
+                                </video>
+                                <div style="text-align: center;">
+                                    <button id="show-video-${session.id}" onclick="loadHistoryVideo(${session.id}); event.stopPropagation();" style="
+                                        background: #667eea; 
+                                        color: white; 
+                                        border: none; 
+                                        border-radius: 15px; 
+                                        padding: 8px 16px; 
+                                        font-size: 0.9em; 
+                                        cursor: pointer;
+                                        margin: 0 5px;
+                                    ">🎬 הצג וידאו</button>
+                                    <button onclick="downloadHistoryVideo(${session.id}); event.stopPropagation();" style="
+                                        background: #28a745; 
+                                        color: white; 
+                                        border: none; 
+                                        border-radius: 15px; 
+                                        padding: 8px 16px; 
+                                        font-size: 0.9em; 
+                                        cursor: pointer;
+                                        margin: 0 5px;
+                                    ">💾 הורד</button>
+                                </div>
+                            </div>
                         ` : ''}
                     </div>
                 `;
             }).join('');
-            
-            // הוסף event listeners לכפתורים
-            history.forEach(session => {
-                if (session.hasVideo) {
-                    const downloadBtn = document.getElementById(`download-btn-${session.id}`);
-                    const viewBtn = document.getElementById(`view-btn-${session.id}`);
-                    
-                    if (downloadBtn) {
-                        downloadBtn.addEventListener('click', () => {
-                            console.log(`[HISTORY] 💾 Download button clicked for ${session.id}`);
-                            downloadHistoryVideo(session.id);
-                        });
-                    }
-                    
-                    if (viewBtn) {
-                        viewBtn.addEventListener('click', () => {
-                            console.log(`[HISTORY] 📊 View button clicked for ${session.id}`);
-                            viewHistorySession(session.id);
-                        });
-                    }
-                }
-            });
             
             console.log('[HISTORY] ✅ Loaded', history.length, 'sessions');
         }
@@ -957,53 +936,40 @@
             };
             
             recognition.onend = () => {
-                // נקה timer
-                if (forceRestartTimer) {
-                    clearTimeout(forceRestartTimer);
-                    forceRestartTimer = null;
-                }
-                
                 const timeSinceStart = Date.now() - lastResultTime;
-                console.log('[SPEECH] Ended, time since last result:', timeSinceStart, 'ms');
+                console.log('[SPEECH] Ended, restarting immediately...');
                 
-                if (startTime && restartCount < 20) { // יותר ניסיונות!
+                if (startTime && restartCount < 50) { // עוד יותר ניסיונות
                     restartCount++;
-                    console.log('[SPEECH] 🔄 Restarting... attempt:', restartCount);
                     
-                    // המתן קצר יותר - 200ms במקום 500ms
-                    setTimeout(() => {
-                        try {
-                            if (recognition && startTime) {
-                                recognition.start();
-                            }
-                        } catch (error) {
-                            console.error('[SPEECH] Failed to restart:', error);
-                            // אם נכשל, נסה restart מלא תוך שנייה
-                            setTimeout(() => {
-                                if (startTime) {
-                                    console.log('[SPEECH] 🔄 Full restart');
-                                    startSpeechRecognition(); // התחל מחדש לגמרי
-                                }
-                            }, 1000);
+                    // restart מיידי - בלי המתנה!
+                    try {
+                        if (recognition && startTime) {
+                            recognition.start();
                         }
-                    }, 200); // מהיר יותר!
+                    } catch (error) {
+                        // אם נכשל, נסה אחרי 100ms בלבד
+                        setTimeout(() => {
+                            if (startTime) recognition.start();
+                        }, 100);
+                    }
                 } else {
-                    console.log('[SPEECH] Stopped restarting - too many attempts or recording ended');
+                    console.log('[SPEECH] Stopped restarting');
                 }
             };
             
-            // התחל עם 3 ניסיונות מקבילים (לאייפון הבעייתי)
-            for (let i = 0; i < 3; i++) {
+            // התחל עם 5 ניסיונות מיידיים במקביל!
+            for (let i = 0; i < 5; i++) {
                 setTimeout(() => {
                     try {
                         if (startTime) {
                             recognition.start();
-                            console.log(`[SPEECH] 🎤 Start attempt ${i + 1}/3`);
+                            console.log(`[SPEECH] 🎤 Start attempt ${i + 1}/5`);
                         }
                     } catch (error) {
                         console.log(`[SPEECH] Start attempt ${i + 1} failed:`, error);
                     }
-                }, i * 1000); // כל שנייה ניסיון חדש
+                }, i * 200); // כל 200ms
             }
         }
         
@@ -1159,7 +1125,44 @@
             fallbackBtn.style.display = 'none';
         }
         
-        function downloadHistoryVideo(id) {
+        function loadHistoryVideo(id) {
+            const video = document.getElementById(`history-video-${id}`);
+            const button = document.getElementById(`show-video-${id}`);
+            
+            if (!videoDatabase) {
+                alert('מסד נתונים לא זמין');
+                return;
+            }
+            
+            console.log('[HISTORY] 🎬 Loading video inline for', id);
+            
+            const transaction = videoDatabase.transaction(['videos'], 'readonly');
+            const store = transaction.objectStore('videos');
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                const result = request.result;
+                if (result && result.videoBlob) {
+                    const url = URL.createObjectURL(result.videoBlob);
+                    video.src = url;
+                    video.style.display = 'block';
+                    button.textContent = '🎬 מוטען';
+                    button.disabled = true;
+                    button.style.background = '#6c757d';
+                    
+                    console.log('[HISTORY] ✅ Video loaded inline');
+                    
+                    // ניקוי אחרי 60 שניות
+                    setTimeout(() => URL.revokeObjectURL(url), 60000);
+                } else {
+                    alert('וידאו לא נמצא');
+                }
+            };
+            
+            request.onerror = () => {
+                alert('שגיאה בטעינת וידאו');
+            };
+        }
             console.log('[HISTORY] 💾 Downloading video for session', id);
             
             if (!videoDatabase) {
