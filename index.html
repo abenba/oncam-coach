@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 4.0 • הכל מובנה!</p>
+            <p class="version">גרסה 4.1 • תיקון נגן</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -168,6 +168,9 @@
                     <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
                         <span id="video-size">גודל: חישוב...</span>
                     </div>
+                    <button id="video-fallback-btn" onclick="downloadVideo()" style="display: none; margin-top: 10px; padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 0.9em;">
+                        💾 הורד וידאו במקום
+                    </button>
                 </div>
             </div>
             
@@ -807,11 +810,36 @@
             try {
                 // יצירת blob מהוידאו
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
                 
-                // הגדרת הנגן
-                video.src = url;
-                video.currentTime = 0;
+                // תיקון לאייפון - וידבא שזה WebM תקין
+                console.log('[VIDEO-PLAYER] 📹 Blob type:', blob.type, 'Size:', blob.size);
+                
+                // ניסיון עם FileReader (יותר יציב באייפון)
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    video.src = e.target.result;
+                    video.load(); // כפה טעינה מחדש
+                    console.log('[VIDEO-PLAYER] ✅ Video loaded via FileReader');
+                };
+                
+                // גיבוי עם URL.createObjectURL
+                reader.onerror = function() {
+                    console.warn('[VIDEO-PLAYER] ⚠️ FileReader failed, trying createObjectURL');
+                    const url = URL.createObjectURL(blob);
+                    video.src = url;
+                    video.load();
+                    
+                    // ניקוי URL אחרי 30 שניות
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                };
+                
+                // התחל עם FileReader
+                reader.readAsDataURL(blob);
+                
+                // הגדרות נוספות לאייפון
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.preload = 'metadata';
                 
                 // חישוב גודל
                 const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
@@ -820,11 +848,18 @@
                 // הצגת הנגן
                 container.style.display = 'block';
                 
-                console.log(`[VIDEO-PLAYER] ✅ Setup complete - ${sizeMB} MB`);
+                // טיפול בשגיאות
+                video.onerror = function(e) {
+                    console.error('[VIDEO-PLAYER] ❌ Video error:', e);
+                    sizeDiv.textContent = `גודל: ${sizeMB} MB`;
+                    // הסתר את הנגן והצג כפתור הורדה
+                    video.style.display = 'none';
+                    document.getElementById('video-fallback-btn').style.display = 'block';
+                    sizeDiv.innerHTML = `גודל: ${sizeMB} MB<br><span style="color: #e74c3c;">נגן לא עובד - השתמש בכפתור למטה</span>`;
+                };
                 
-                // ניקוי URL כשהוידאו לא בשימוש יותר
-                video.onloadstart = () => {
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                video.onloadeddata = function() {
+                    console.log('[VIDEO-PLAYER] ✅ Video data loaded successfully');
                 };
                 
             } catch (error) {
@@ -835,11 +870,22 @@
         
         function cleanupVideoPlayer() {
             const video = document.getElementById('result-video');
+            const fallbackBtn = document.getElementById('video-fallback-btn');
+            
             if (video.src && video.src.startsWith('blob:')) {
                 URL.revokeObjectURL(video.src);
                 video.src = '';
-                console.log('[VIDEO-PLAYER] 🧹 Cleaned up');
+                console.log('[VIDEO-PLAYER] 🧹 Cleaned up blob URL');
             }
+            
+            if (video.src && video.src.startsWith('data:')) {
+                video.src = '';
+                console.log('[VIDEO-PLAYER] 🧹 Cleaned up data URL');
+            }
+            
+            // איפוס תצוגה
+            video.style.display = 'block';
+            fallbackBtn.style.display = 'none';
         }
         
         function downloadReport() {
