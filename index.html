@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 5.4 • ספירה ידנית + אוטומטית</p>
+            <p class="version">גרסה 6.0 • תיקון מקצועי</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -124,7 +124,6 @@
                 <video id="video" autoplay muted></video>
                 <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
                 <div id="word-count" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">0 מילים</div>
-                <div id="manual-counter" style="position: absolute; bottom: 15px; right: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 10px; font-size: 1em; font-weight: bold; cursor: pointer; user-select: none;" onclick="addWords()">👆 +10 מילים</div>
                 <div id="eye-indicator" style="position: absolute; bottom: 15px; left: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 1em; font-weight: bold; display: none;">👁️ טוב</div>
             </div>
             
@@ -163,6 +162,17 @@
             <h1>🏆 תוצאות</h1>
             
             <!-- נגן וידאו -->
+            <div id="video-player-container" style="margin: 20px 0; display: none;">
+                <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; text-align: center;">
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">🎬 הקלטה שלך:</div>
+                    <video id="result-video" controls style="width: 100%; max-height: 250px; border-radius: 10px; background: #000;">
+                        הדפדפן שלך לא תומך בנגן וידאו
+                    </video>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <span id="video-size">גודל: חישוב...</span>
+                    </div>
+                </div>
+            </div>
             <div id="video-player-container" style="margin: 20px 0; display: none;">
                 <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 15px; text-align: center;">
                     <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">🎬 הקלטה שלך:</div>
@@ -752,6 +762,39 @@
             show('results');
         }
         
+        function setupVideoPlayer() {
+            const container = document.getElementById('video-player-container');
+            const video = document.getElementById('result-video');
+            const sizeDiv = document.getElementById('video-size');
+            
+            if (recordedChunks.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                video.src = url;
+                video.load();
+                
+                const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+                sizeDiv.textContent = `גודל: ${sizeMB} MB`;
+                
+                container.style.display = 'block';
+                
+                console.log(`[VIDEO-PLAYER] ✅ Setup complete - ${sizeMB} MB`);
+                
+                // ניקוי אחרי 30 שניות
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+                
+            } catch (error) {
+                console.error('[VIDEO-PLAYER] ❌ Error:', error);
+                container.style.display = 'none';
+            }
+        }
+        
         function updateTimer() {
             if (!startTime) return;
             
@@ -827,17 +870,10 @@
             
             recognition = new SpeechRecognition();
             
-            // הגדרות מהירות יותר לאייפון
+            // הגדרות פשוטות - עובד טוב באייפון
             recognition.lang = 'he-IL';
-            recognition.continuous = true;
+            recognition.continuous = false;  // שינוי קריטי!
             recognition.interimResults = true;
-            recognition.maxAlternatives = 1;
-            
-            // הגדרות חדשות - יותר אגרסיביות
-            if ('webkitSpeechRecognition' in window) {
-                recognition.webkitServiceType = 'search';  // מהיר יותר
-                recognition.webkitGrammars = null;  // בלי grammar checking - מהיר יותר
-            }
             
             let restartCount = 0;
             let lastResultTime = Date.now();
