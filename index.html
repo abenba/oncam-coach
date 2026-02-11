@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 5.1 • נגן תקין + דיבור מהיר</p>
+            <p class="version">גרסה 5.2 • תיקון נגן + דיבור מהיר</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -420,7 +420,7 @@
                         <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
                         
                         ${hasVideo ? `
-                            <button onclick="playHistoryVideo(${session.id})" style="
+                            <button id="play-btn-${session.id}" style="
                                 position: absolute; 
                                 bottom: 10px; 
                                 left: 60px; 
@@ -433,7 +433,7 @@
                                 cursor: pointer;
                                 z-index: 100;
                             ">▶️ נגן</button>
-                            <button onclick="viewHistorySession(${session.id})" style="
+                            <button id="view-btn-${session.id}" style="
                                 position: absolute; 
                                 bottom: 10px; 
                                 left: 130px; 
@@ -450,6 +450,28 @@
                     </div>
                 `;
             }).join('');
+            
+            // הוסף event listeners לכפתורים
+            history.forEach(session => {
+                if (session.hasVideo) {
+                    const playBtn = document.getElementById(`play-btn-${session.id}`);
+                    const viewBtn = document.getElementById(`view-btn-${session.id}`);
+                    
+                    if (playBtn) {
+                        playBtn.addEventListener('click', () => {
+                            console.log(`[HISTORY] 🎬 Play button clicked for ${session.id}`);
+                            playHistoryVideo(session.id);
+                        });
+                    }
+                    
+                    if (viewBtn) {
+                        viewBtn.addEventListener('click', () => {
+                            console.log(`[HISTORY] 📊 View button clicked for ${session.id}`);
+                            viewHistorySession(session.id);
+                        });
+                    }
+                }
+            });
             
             console.log('[HISTORY] ✅ Loaded', history.length, 'sessions');
         }
@@ -799,9 +821,9 @@
                 console.log('[SPEECH] ✅ Started, restart count:', restartCount);
                 lastResultTime = Date.now();
                 
-                // אם אין תגובה תוך 5 שניות - restart בכוח (מהיר יותר!)
+                // אם אין תגובה תוך 3 שניות - restart בכוח (מהיר יותר!)
                 forceRestartTimer = setTimeout(() => {
-                    console.log('[SPEECH] ⚠️ No response for 5s - forcing restart');
+                    console.log('[SPEECH] ⚠️ No response for 3s - forcing restart');
                     if (recognition && startTime) {
                         try {
                             recognition.stop();
@@ -812,12 +834,12 @@
                                     console.log('[SPEECH] 🔄 Force restart attempt:', restartCount);
                                     recognition.start();
                                 }
-                            }, 200);
+                            }, 100);
                         } catch (e) {
                             console.log('[SPEECH] Stop error during force restart:', e);
                         }
                     }
-                }, 5000);  // 5 שניות במקום 10
+                }, 3000);  // 3 שניות במקום 5
             };
             
             recognition.onresult = (event) => {
