@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 6.2 • תיקון ניווט קריטי!</p>
+            <p class="version">גרסה 6.3 • debug ניווט</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -301,15 +301,18 @@
         let recordedChunks = [];
         
         function show(pageId) {
-            // נקה נגן וידאו קודם
-            cleanupVideoPlayer();
-            
             // הסתר את כל הדפים
             const pages = document.querySelectorAll('.page');
             pages.forEach(page => page.classList.remove('active'));
             
             // הצג את הדף הנבחר
-            document.getElementById(pageId).classList.add('active');
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                console.log('[APP] ✅ Switched to page:', pageId);
+            } else {
+                console.error('[APP] ❌ Page not found:', pageId);
+            }
         }
         
         function goHome() {
@@ -334,23 +337,34 @@
         }
         
         function goToCamera() {
-            console.log('[APP] Going to camera');
-            show('camera-page');  // תיקון!
+            console.log('[APP] 📹 Going to camera...');
             
-            // בקש גישה למצלמה
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'user' }, 
-                audio: true 
-            })
-            .then(stream => {
-                console.log('[CAMERA] Access granted');
-                document.getElementById('video').srcObject = stream;
-                window.currentStream = stream;
-            })
-            .catch(error => {
-                console.error('[CAMERA] Error:', error);
-                alert('לא ניתן לגשת למצלמה: ' + error.message);
-            });
+            try {
+                show('camera-page');
+                console.log('[APP] ✅ Camera page shown');
+                
+                // בקש גישה למצלמה
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' }, 
+                    audio: true 
+                })
+                .then(stream => {
+                    console.log('[CAMERA] ✅ Access granted');
+                    const video = document.getElementById('video');
+                    if (video) {
+                        video.srcObject = stream;
+                        window.currentStream = stream;
+                    } else {
+                        console.error('[CAMERA] ❌ Video element not found');
+                    }
+                })
+                .catch(error => {
+                    console.error('[CAMERA] ❌ Error:', error);
+                    alert('לא ניתן לגשת למצלמה: ' + error.message);
+                });
+            } catch (error) {
+                console.error('[APP] ❌ Error in goToCamera:', error);
+            }
         }
         
         function goToHistory() {
@@ -1109,20 +1123,21 @@
             const video = document.getElementById('result-video');
             const fallbackBtn = document.getElementById('video-fallback-btn');
             
-            if (video.src && video.src.startsWith('blob:')) {
+            // בדיקה אם האלמנטים קיימים
+            if (video && video.src && video.src.startsWith('blob:')) {
                 URL.revokeObjectURL(video.src);
                 video.src = '';
                 console.log('[VIDEO-PLAYER] 🧹 Cleaned up blob URL');
             }
             
-            if (video.src && video.src.startsWith('data:')) {
+            if (video && video.src && video.src.startsWith('data:')) {
                 video.src = '';
                 console.log('[VIDEO-PLAYER] 🧹 Cleaned up data URL');
             }
             
             // איפוס תצוגה
-            video.style.display = 'block';
-            fallbackBtn.style.display = 'none';
+            if (video) video.style.display = 'block';
+            if (fallbackBtn) fallbackBtn.style.display = 'none';
         }
         
         function loadHistoryVideo(id) {
