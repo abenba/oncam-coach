@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 5.2 • תיקון נגן + דיבור מהיר</p>
+            <p class="version">גרסה 5.4 • ספירה ידנית + אוטומטית</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -124,6 +124,7 @@
                 <video id="video" autoplay muted></video>
                 <div id="timer" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">00:00</div>
                 <div id="word-count" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold;">0 מילים</div>
+                <div id="manual-counter" style="position: absolute; bottom: 15px; right: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 10px; font-size: 1em; font-weight: bold; cursor: pointer; user-select: none;" onclick="addWords()">👆 +10 מילים</div>
                 <div id="eye-indicator" style="position: absolute; bottom: 15px; left: 15px; background: rgba(76, 175, 80, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 1em; font-weight: bold; display: none;">👁️ טוב</div>
             </div>
             
@@ -263,6 +264,28 @@
         let recognition = null;
         let transcript = '';
         let wordCount = 0;
+        let manualWordCount = 0;  // ספירה ידנית
+        
+        // פונקציה להוספת מילים ידנית
+        function addWords() {
+            manualWordCount += 10;
+            updateWordCount();
+            console.log(`[MANUAL] Added 10 words, total manual: ${manualWordCount}`);
+        }
+        
+        // עדכון תצוגת מילים - לוקח את המקסימום
+        function updateWordCount() {
+            const totalWords = Math.max(wordCount, manualWordCount);
+            document.getElementById('word-count').textContent = `${totalWords} מילים`;
+            
+            if (manualWordCount > wordCount) {
+                document.getElementById('word-count').style.background = 'rgba(76, 175, 80, 0.9)'; // ירוק לידני
+            } else {
+                document.getElementById('word-count').style.background = 'rgba(0,0,0,0.8)'; // שחור לאוטומטי
+            }
+            
+            return totalWords;
+        }
         let eyeScore = 100;
         let mediaRecorder = null;
         let recordedChunks = [];
@@ -420,11 +443,11 @@
                         <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 50%; font-weight: 700; font-size: 1.2em;">${session.score}</div>
                         
                         ${hasVideo ? `
-                            <button id="play-btn-${session.id}" style="
+                            <button id="download-btn-${session.id}" style="
                                 position: absolute; 
                                 bottom: 10px; 
                                 left: 60px; 
-                                background: #667eea; 
+                                background: #28a745; 
                                 color: white; 
                                 border: none; 
                                 border-radius: 20px; 
@@ -432,7 +455,7 @@
                                 font-size: 0.8em; 
                                 cursor: pointer;
                                 z-index: 100;
-                            ">▶️ נגן</button>
+                            ">💾 הורד</button>
                             <button id="view-btn-${session.id}" style="
                                 position: absolute; 
                                 bottom: 10px; 
@@ -454,13 +477,13 @@
             // הוסף event listeners לכפתורים
             history.forEach(session => {
                 if (session.hasVideo) {
-                    const playBtn = document.getElementById(`play-btn-${session.id}`);
+                    const downloadBtn = document.getElementById(`download-btn-${session.id}`);
                     const viewBtn = document.getElementById(`view-btn-${session.id}`);
                     
-                    if (playBtn) {
-                        playBtn.addEventListener('click', () => {
-                            console.log(`[HISTORY] 🎬 Play button clicked for ${session.id}`);
-                            playHistoryVideo(session.id);
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => {
+                            console.log(`[HISTORY] 💾 Download button clicked for ${session.id}`);
+                            downloadHistoryVideo(session.id);
                         });
                     }
                     
@@ -543,11 +566,13 @@
             // איפוס נתונים
             transcript = '';
             wordCount = 0;
+            manualWordCount = 0;  // איפוס ספירה ידנית
             eyeScore = 100;
             recordedChunks = [];
             document.getElementById('transcript-text').textContent = 'מקליט...';
             document.getElementById('transcript-text').style.color = '#333';
             document.getElementById('word-count').textContent = '0 מילים';
+            document.getElementById('word-count').style.background = 'rgba(0,0,0,0.8)';
             document.getElementById('eye-indicator').style.display = 'block';
             
             // הסתר טיפים
@@ -616,13 +641,14 @@
             document.getElementById('tips-box').style.display = 'block';
             
             // חישוב ציון
-            const score = calculateScore(wpm, wordCount, elapsed, eyeScore);
+            const finalWordCount = Math.max(wordCount, manualWordCount);
+            const score = calculateScore(wpm, finalWordCount, elapsed, eyeScore);
             const rating = getSimpleRating(score);
-            const summary = generateSimpleSummary(wpm, wordCount, elapsed, eyeScore);
+            const summary = generateSimpleSummary(wpm, finalWordCount, elapsed, eyeScore);
             const eyeRating = getEyeRating(eyeScore);
             
             // הצג תוצאות
-            showResults(score, wpm, wordCount, elapsed, rating, summary, eyeRating);
+            showResults(score, wpm, finalWordCount, elapsed, rating, summary, eyeRating);
             
             console.log('[RECORDING] ✅ Stopped - Duration:', elapsed, 'Words:', wordCount, 'WPM:', wpm);
         }
@@ -871,8 +897,8 @@
                     transcript += finalTranscript;
                     wordCount = transcript.trim().split(/\s+/).filter(word => word.length > 0).length;
                     
-                    document.getElementById('word-count').textContent = `${wordCount} מילים`;
-                    console.log('[SPEECH] 📊 Total words:', wordCount);
+                    updateWordCount();  // שימוש בפונקציה החדשה
+                    console.log('[SPEECH] 📊 Auto words:', wordCount, 'Manual words:', manualWordCount);
                 }
                 
                 // הצג תמלול (קבוע + זמני)
@@ -1097,11 +1123,18 @@
             fallbackBtn.style.display = 'none';
         }
         
-        function playHistoryVideo(id) {
-            console.log('[HISTORY] 🎬 Loading video for session', id);
+        function downloadHistoryVideo(id) {
+            console.log('[HISTORY] 💾 Downloading video for session', id);
             
             if (!videoDatabase) {
-                alert('מסד הנתונים לא זמין');
+                // אם אין IndexedDB, נשתמש בdownloadVideo הרגיל
+                const history = JSON.parse(localStorage.getItem('oncam-history') || '[]');
+                const session = history.find(s => s.id === id);
+                if (session) {
+                    // הגדר את recordedChunks ואז הורד
+                    recordedChunks = []; // איפוס
+                    downloadVideo();
+                }
                 return;
             }
             
@@ -1112,9 +1145,23 @@
             request.onsuccess = () => {
                 const result = request.result;
                 if (result && result.videoBlob) {
-                    console.log('[HISTORY] ✅ Video loaded from IndexedDB');
-                    recordedChunks = [result.videoBlob];
-                    viewHistorySession(id); // יעבור לעמוד תוצאות עם וידאו
+                    console.log('[HISTORY] ✅ Video loaded from IndexedDB for download');
+                    
+                    // צור לינק הורדה
+                    const url = URL.createObjectURL(result.videoBlob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `oncam-coach-${id}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    console.log('[HISTORY] 💾 Video downloaded successfully');
                 } else {
                     alert('וידאו לא נמצא');
                     console.error('[HISTORY] ❌ Video not found in IndexedDB');
