@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 3.0 • מושלם!</p>
+            <p class="version">גרסה 3.1 • עם טיפים ודוחות</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -93,6 +93,32 @@
         <!-- עמוד מצלמה -->
         <div id="camera" class="page">
             <h1>🎬 הקלטה</h1>
+            
+            <div id="tips-box" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #dee2e6; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2em; display: flex; align-items: center; justify-content: center;">
+                    <span style="margin-left: 10px; font-size: 1.1em;">🎬</span> טיפים להקלטה מוצלחת
+                </h3>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">🎯</span>
+                    דברו בקצב נעים. לא צריך לרוץ, וגם לא להאט. פשוט לדבר.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">👁️</span>
+                    הסתכלו למצלמה, כאילו מישהו יושב מולכם ומקשיב רק לכם.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">🎤</span>
+                    דברו ברור, עם נימה של נחישות ואופטימיות. כך המסר עובר טוב יותר.
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">💡</span>
+                    תנו לפנים להשתתף בדיבור ודאגו שהן יהיו מוארות. אור טוב משפר את איכות הצילום והנוכחות.
+                </div>
+                <div style="margin-bottom: 0; padding: 8px 0; display: flex; align-items: flex-start; line-height: 1.4; font-size: 0.95em;">
+                    <span style="margin-left: 10px; font-size: 1.1em; margin-top: 1px;">💪</span>
+                    דברו לפחות חצי דקה רצופה, כדי להיכנס לזרימה.
+                </div>
+            </div>
             
             <div style="position: relative;">
                 <video id="video" autoplay muted></video>
@@ -169,6 +195,9 @@
 
             <button class="btn btn-primary" onclick="goToCamera()">
                 🔄 אימון נוסף
+            </button>
+            <button class="btn btn-success" onclick="downloadReport()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-top: 10px;">
+                📄 שמור דוח תוצאות
             </button>
             <button class="btn btn-secondary" onclick="goHome()">
                 🏠 חזור לבית
@@ -343,6 +372,9 @@
             document.getElementById('word-count').textContent = '0 מילים';
             document.getElementById('eye-indicator').style.display = 'block';
             
+            // הסתר טיפים
+            document.getElementById('tips-box').style.display = 'none';
+            
             startTime = Date.now();
             
             // החלף כפתורים
@@ -392,6 +424,9 @@
             // החלף כפתורים
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
+            
+            // הצג טיפים מחדש
+            document.getElementById('tips-box').style.display = 'block';
             
             // חישוב ציון
             const score = calculateScore(wpm, wordCount, elapsed, eyeScore);
@@ -633,7 +668,165 @@
             }
         }
         
-        console.log('[APP] OnCam Coach v2.5 loaded');
+        console.log('[APP] OnCam Coach v3.1 loaded');
+        
+        function downloadReport() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 1000;
+            const ctx = canvas.getContext('2d');
+            
+            // רקע גרדיאנט
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // כרטיס לבן
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetY = 10;
+            
+            // ריבוע מעוגל
+            const x = 40, y = 40, w = 720, h = 920, r = 20;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            
+            // כותרת
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 36px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎬 OnCam Coach', 400, 100);
+            
+            // תאריך
+            ctx.fillStyle = '#999';
+            ctx.font = '16px -apple-system, sans-serif';
+            const date = new Date().toLocaleString('he-IL');
+            ctx.fillText(date, 400, 130);
+            
+            // ציון כללי
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 24px -apple-system, sans-serif';
+            ctx.fillText('ציון כללי', 400, 180);
+            
+            const score = document.getElementById('final-score').textContent;
+            ctx.font = 'bold 48px -apple-system, sans-serif';
+            ctx.fillText(score, 400, 240);
+            
+            ctx.fillStyle = '#999';
+            ctx.font = '16px -apple-system, sans-serif';
+            ctx.fillText('מתוך 100', 400, 265);
+            
+            // נתונים
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#333';
+            
+            const wpm = document.getElementById('result-wpm').textContent;
+            const words = document.getElementById('result-words').textContent;
+            const time = document.getElementById('result-time').textContent;
+            const eye = document.getElementById('result-rating').textContent;
+            
+            let y2 = 320;
+            
+            // מילים לדקה
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('מילים לדקה', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(wpm, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // סה"כ מילים  
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('סה"כ מילים', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(words, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // זמן
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('זמן', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(time, 650, y2 + 20);
+            
+            y2 += 60;
+            
+            // קשר עין
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.fillStyle = '#999';
+            ctx.fillText('קשר עין', 650, y2);
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText(eye, 650, y2 + 20);
+            
+            // סיכום
+            ctx.fillStyle = '#667eea';
+            ctx.font = 'bold 18px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💬 סיכום האימון', 400, 600);
+            
+            const summary = document.getElementById('summary-text').textContent;
+            ctx.fillStyle = '#555';
+            ctx.font = '14px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            
+            // פיצול הסיכום לשורות
+            const maxWidth = 500;
+            const words2 = summary.split(' ');
+            let line = '';
+            y2 = 640;
+            
+            for (let i = 0; i < words2.length; i++) {
+                const testLine = line + words2[i] + ' ';
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > maxWidth && i > 0) {
+                    ctx.fillText(line, 680, y2);
+                    line = words2[i] + ' ';
+                    y2 += 25;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, 680, y2);
+            
+            // לוגו
+            ctx.fillStyle = '#ccc';
+            ctx.font = '12px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('OnCam Coach • אימון נאומים מבוסס AI', 400, 930);
+            
+            // הורדה
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `oncam-coach-report-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                console.log('[REPORT] 📄 Downloaded');
+            });
+        }
     </script>
 </body>
 </html>
