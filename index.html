@@ -92,7 +92,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 10.0 • OnCam Coach מושלם!</p>
+            <p style="text-align:center; color:#999; font-size:0.8em; margin-bottom:20px;">גרסה 10.1 • OnCam Coach ייצור!</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">🚀 התחל אימון חדש</button>
             <button class="btn btn-secondary" onclick="goToHistory()">📊 היסטוריית אימונים</button>
@@ -115,11 +115,6 @@
             <div style="background: #e3f2fd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #2196f3;">
                 <strong>💡 טיפ מקצועי:</strong><br>
                 <span id="professional-tip" style="color: #1565c0; font-size: 0.9em;">מחכה להתחלת ההקלטה...</span>
-            </div>
-            
-            <div style="background: #fff3cd; border-radius: 15px; padding: 15px; margin: 15px 0; border: 2px solid #ffeaa7; font-size: 0.8em; display: none;" id="debug-box">
-                <strong>🔍 Debug Info:</strong><br>
-                <div id="debug-info" style="color: #856404;">מחכה לדיבור...</div>
             </div>
             
             <button id="start-btn" class="btn btn-primary" onclick="startBasicRecording()">⏺️ התחל הקלטה</button>
@@ -247,8 +242,6 @@
             document.getElementById('live-transcript').textContent = 'התמלול יופיע כאן...';
             document.getElementById('live-transcript').style.color = '#666';
             document.getElementById('professional-tip').textContent = 'מחכה להתחלת ההקלטה...';
-            document.getElementById('debug-info').textContent = 'מחכה לדיבור...';
-            document.getElementById('debug-box').style.display = 'none';
             startTime = null;
             transcript = '';
             wordCount = 0;
@@ -297,9 +290,6 @@
             
             // התחל החלפת טיפים
             startTipsRotation();
-            
-            // הצג debug אם צריך (לבדיקות)
-            document.getElementById('debug-box').style.display = 'block';
             
             // התחל הקלטת וידאו
             if (stream) {
@@ -395,9 +385,6 @@
                 tipInterval = null;
             }
             
-            // הסתר debug
-            document.getElementById('debug-box').style.display = 'none';
-            
             // במקרה של Safari - קח את הטקסט המוצג כ-final
             const currentTranscript = document.getElementById('live-transcript').textContent;
             if (currentTranscript && currentTranscript !== 'התמלול יופיע כאן...' && currentTranscript !== 'מדבר...') {
@@ -484,9 +471,6 @@
             };
             
             recognition.onresult = (event) => {
-                const debugEl = document.getElementById('debug-info');
-                debugEl.innerHTML = `📝 Got result! Count: ${event.results.length}<br>`;
-                
                 let finalText = '';
                 let interimText = '';
                 
@@ -495,42 +479,26 @@
                     const text = result[0].transcript;
                     const isFinal = result.isFinal;
                     
-                    debugEl.innerHTML += `Result ${i}: "${text}" (final: ${isFinal})<br>`;
-                    
                     if (isFinal) {
                         finalText += text + ' ';
-                        debugEl.innerHTML += `✅ FINAL TEXT: "${text}"<br>`;
                     } else {
                         interimText += text;
-                        debugEl.innerHTML += `🔤 INTERIM: "${text}"<br>`;
                     }
                 }
-                
-                debugEl.innerHTML += `<br>📊 PROCESSING:<br>`;
-                debugEl.innerHTML += `FinalText: "${finalText}"<br>`;
-                debugEl.innerHTML += `InterimText: "${interimText}"<br>`;
                 
                 if (finalText) {
                     transcript += finalText;
                     wordCount = transcript.trim().split(/\s+/).filter(w => w.length > 0).length;
                     
-                    debugEl.innerHTML += `<br>📈 UPDATING FROM FINAL:<br>`;
-                    debugEl.innerHTML += `New transcript: "${transcript}"<br>`;
-                    debugEl.innerHTML += `Word count: ${wordCount}<br>`;
-                    
                     // עדכון Status + תמלול חי
                     const statusText = `מקליט... ${wordCount} מילים`;
-                    debugEl.innerHTML += `Status: "${statusText}"<br>`;
-                    
                     document.getElementById('status').textContent = statusText;
                     document.getElementById('live-transcript').textContent = transcript || 'מדבר...';
                     document.getElementById('live-transcript').style.color = '#333';
-                    
-                    debugEl.innerHTML += `✅ ALL UPDATED!<br>`;
                 }
                 
                 if (interimText) {
-                    // ספירת מילים גם מ-interim לאייפון!
+                    // ספירת מילים גם מ-interim לאייפון Safari!
                     const fullText = transcript + interimText;
                     const interimWordCount = fullText.trim().split(/\s+/).filter(w => w.length > 0).length;
                     
@@ -538,15 +506,11 @@
                         wordCount = interimWordCount;
                         const statusText = `מקליט... ${wordCount} מילים`;
                         document.getElementById('status').textContent = statusText;
-                        debugEl.innerHTML += `📊 INTERIM UPDATE: ${wordCount} words<br>`;
                     }
                     
                     // הצג תמלול זמני
                     document.getElementById('live-transcript').textContent = fullText || 'מדבר...';
                     document.getElementById('live-transcript').style.color = '#666';
-                    debugEl.innerHTML += `🔤 Interim displayed<br>`;
-                } else {
-                    debugEl.innerHTML += `⚠️ No interim text either<br>`;
                 }
             };
             
