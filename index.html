@@ -80,7 +80,7 @@
                 <div>יש לך בקרוב ראיון, אודיש'ן, הרצאה, פיץ' ?</div>
                 <div>אני כאן בשבילך.</div>
             </div>
-            <p class="version">גרסה 4.2 • נגן + תאורה מתוקנת</p>
+            <p class="version">גרסה 4.3 • debug כפתורי נגינה</p>
             
             <button class="btn btn-primary" onclick="goToCamera()">
                 🚀 התחל אימון חדש
@@ -302,6 +302,8 @@
             if (recordedChunks.length > 0) {
                 videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
                 console.log(`[VIDEO] 📦 Created blob: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+            } else {
+                console.log('[VIDEO] ❌ No recorded chunks - no video to save');
             }
             
             const session = {
@@ -322,6 +324,8 @@
                 videoBlob: videoBlob  // 🎥 שמירת הוידאו!
             };
             
+            console.log(`[HISTORY] 💾 Saving session: hasVideo = ${!!videoBlob}, chunks = ${recordedChunks.length}`);
+            
             history.unshift(session);  // הוסף בתחילה
             
             // שמור רק 5 אחרונים
@@ -335,9 +339,10 @@
                 console.log('[HISTORY] ✅ Saved session with video, total:', history.length);
             } catch (err) {
                 // אם נכשל - שמור בלי וידאו
+                console.warn('[HISTORY] ⚠️ Failed to save with video, trying without:', err);
                 session.videoBlob = null;
                 localStorage.setItem('oncam-history', JSON.stringify(history));
-                console.warn('[HISTORY] ⚠️ Saved session without video (too large)');
+                console.log('[HISTORY] ✅ Saved session without video (too large)');
             }
         }
         
@@ -353,6 +358,10 @@
             list.innerHTML = history.map(session => {
                 const hasVideo = session.videoBlob && session.videoBlob.size > 0;
                 const videoIcon = hasVideo ? ' 🎥' : '';
+                
+                // DEBUG - בואו נראה מה קורה
+                console.log(`[HISTORY] Session ${session.id}: hasVideo = ${hasVideo}, videoBlob = ${!!session.videoBlob}, size = ${session.videoBlob ? session.videoBlob.size : 'N/A'}`);
+                
                 const playButton = hasVideo ? `
                     <button onclick="playHistoryVideo(${session.id}, event)" style="
                         position: absolute; 
@@ -365,12 +374,13 @@
                         padding: 6px 12px; 
                         font-size: 0.8em; 
                         cursor: pointer;
+                        z-index: 10;
                     ">▶️ נגן</button>
                 ` : '';
                 
                 return `
                     <div style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin: 15px 0; position: relative; cursor: pointer; transition: all 0.3s ease;" onclick="viewHistorySession(${session.id})" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
-                        <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
+                        <div style="position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;" onclick="deleteHistorySession(${session.id}, event)">🗑️</div>
                         
                         <div style="text-align: right;">
                             <div style="font-weight: 700; color: #667eea; margin-bottom: 8px; font-size: 1.1em;">${session.date}${videoIcon}</div>
